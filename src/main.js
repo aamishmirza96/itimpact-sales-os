@@ -2869,11 +2869,12 @@ async function boot() {
     state.authenticated = !!user;
     // Listen for auth changes
     window.addEventListener('auth-change', () => {
+      const wasAuth = state.authenticated;
       state.authenticated = !!currentUser;
-      if (state.authenticated) {
+      if (state.authenticated && !wasAuth) {
         state.view = 'leads';
       }
-      render();
+      if (wasAuth !== state.authenticated) render();
     });
   } else {
     state.authenticated = true; // skip auth if no DB
