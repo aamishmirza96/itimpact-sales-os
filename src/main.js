@@ -7,6 +7,11 @@ import { positions, candidates as rawCandidates, CANDIDATE_STATUSES } from './re
 import { supabase, DB_ENABLED, loadDbState, syncProspect, syncCandidate, syncAddedProspect } from './supabase.js';
 import { initAuth, currentUser, currentProfile, signIn, signUp, signOut, getTeamMembers } from './auth.js';
 import { LEAD_STATUSES, fetchLeads, createLead, updateLead, deleteLead } from './leads.js';
+import { fetchTeamMembers as fetchTeam, updateProfile } from './team.js';
+import { fetchArticles, createArticle, updateArticle, deleteArticle } from './articles.js';
+import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost } from './social-planner.js';
+import { fetchNotifications, getUnreadCount, markAsRead, markAllRead, sendNotification, subscribeToNotifications } from './notifications.js';
+import { fetchAnalyticsOverview } from './analytics.js';
 import {
   fetchProjects, createProject, fetchProjectMembers, addProjectMember,
   fetchMessages, createMessage, fetchComments, createComment,
@@ -95,6 +100,25 @@ const state = {
   projectMembers: [],
   teamMembers: [],
   chatUnsub: null,
+  // Team
+  team: [],
+  // Articles
+  articles: [],
+  articleModal: null,
+  articleEditData: null,
+  articleFilter: 'all',
+  // Social Planner
+  socialPosts: [],
+  socialPostModal: null,
+  socialPostFilter: 'all',
+  // Notifications
+  notifications: [],
+  unreadCount: 0,
+  showNotifPanel: false,
+  notifUnsub: null,
+  // Analytics
+  analyticsData: null,
+  analyticsDays: 7,
   generatedPost: null,
   recTab: 'positions',
   recPosition: null,
@@ -358,6 +382,308 @@ function getPostContent() {
   try {
     return p[platform]?.[type]?.[angle] || null;
   } catch { return null; }
+}
+
+// ── Team View ────────────────────────────────────────────────────────
+function renderTeam() {
+  const active = state.team.filter(m => m.status !== 'offline');
+  return `
+  <div class="page-header">
+    <div class="page-title">Team</div>
+    <div class="page-sub">${state.team.length} members · ${active.length} active</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+    ${state.team.map(m => {
+      const statusColor = m.status==='active' ? 'var(--green)' : m.status==='away' ? 'var(--amber)' : 'var(--text-3)';
+      return `
+      <div class="rec-cand-card" style="flex-direction:column;gap:0">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0;position:relative">
+            ${(m.full_name||m.email||'?')[0].toUpperCase()}
+            <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card)"></div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:600;color:var(--text)">${m.full_name||'Unnamed'}</div>
+            <div style="font-size:12px;color:var(--accent-2);font-family:'DM Mono',monospace">${m.designation||m.role||'Member'}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${m.email}</div>
+        ${m.department ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-bottom:6px">Dept: ${m.department}</div>` : ''}
+        ${m.bio ? `<div style="font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px">${m.bio}</div>` : ''}
+        ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
+        ${m.phone ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:8px">📞 ${m.phone}</div>` : ''}
+      </div>`;
+    }).join('')}
+    ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
+  </div>`;
+}
+
+// ── Articles View ────────────────────────────────────────────────────
+function renderArticlesView() {
+  const cats = ['all', ...new Set(state.articles.map(a => a.category).filter(Boolean))];
+  const filtered = state.articleFilter === 'all' ? state.articles : state.articles.filter(a => a.category === state.articleFilter);
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Articles</div>
+      <div class="page-sub">${state.articles.length} articles · knowledge base</div>
+    </div>
+    <button class="find-leads-btn" id="btn-new-article">+ New Article</button>
+  </div>
+  <div class="stage-bar" style="margin-bottom:20px">
+    ${cats.map(c => `<div class="stage-chip ${state.articleFilter===c?'active':''}" data-article-filter="${c}">${c==='all'?'All ('+state.articles.length+')':c}</div>`).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">
+    ${filtered.map(a => `
+      <div class="rec-pos-card" style="cursor:pointer" data-edit-article="${a.id}">
+        ${a.cover_image ? `<div style="height:140px;background:url('${a.cover_image}') center/cover;border-radius:12px 12px 0 0"></div>` : `<div style="height:60px;background:linear-gradient(135deg,var(--accent-glow),var(--bg-3));border-radius:12px 12px 0 0"></div>`}
+        <div style="padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="cand-status-pill" style="background:${a.status==='published'?'var(--green-glow)':a.status==='draft'?'rgba(90,90,114,0.15)':'var(--amber-glow)'};color:${a.status==='published'?'var(--green)':a.status==='draft'?'var(--text-3)':'var(--amber)'}">${a.status}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
+          </div>
+          <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
+          <div style="font-size:12px;color:var(--text-2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${(a.body||'').replace(/[#*_]/g,'').substring(0,200)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
+        </div>
+      </div>`).join('')}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No articles yet. Click "+ New Article" to create one.</div>' : ''}
+  </div>`;
+}
+
+function renderArticleModal() {
+  const isEdit = !!state.articleEditData?.id;
+  const a = state.articleEditData || {};
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:640px">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Article' : 'New Article'}</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="article-form" style="padding:20px 28px 24px">
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
+          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Syne,sans-serif;font-weight:600" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Category</label>
+            <input type="text" name="category" value="${escHtml(a.category||'general')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Cover Image URL</label>
+            <input type="url" name="cover_image" value="${escHtml(a.cover_image||'')}" placeholder="https://..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Content</label>
+          <textarea name="body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
+          ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
+          <select name="status" style="padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+            <option value="draft" ${a.status==='draft'||!a.status?'selected':''}>Draft</option>
+            <option value="published" ${a.status==='published'?'selected':''}>Published</option>
+          </select>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Social Planner View ──────────────────────────────────────────────
+function renderSocialPlanner() {
+  const statuses = ['all','draft','pending_approval','approved','rejected','scheduled','published'];
+  const filtered = state.socialPostFilter === 'all' ? state.socialPosts : state.socialPosts.filter(p => p.status === state.socialPostFilter);
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Social Media Planner</div>
+      <div class="page-sub">${state.socialPosts.length} posts · approval workflow</div>
+    </div>
+    <button class="find-leads-btn" id="btn-new-social-post">+ New Post</button>
+  </div>
+  <div class="stage-bar" style="margin-bottom:20px">
+    ${statuses.map(s => {
+      const count = s==='all' ? state.socialPosts.length : state.socialPosts.filter(p=>p.status===s).length;
+      const label = s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      return `<div class="stage-chip ${state.socialPostFilter===s?'active':''}" data-sp-filter="${s}">${label} (${count})</div>`;
+    }).join('')}
+  </div>
+  <div class="rec-cands-list">
+    ${filtered.map(p => {
+      const statusColors = {draft:'#5a5a72',pending_approval:'#f59e0b',approved:'#10b981',rejected:'#ef4444',scheduled:'#6366f1',published:'#10b981'};
+      const sc = statusColors[p.status]||'#5a5a72';
+      const pendingForMe = (p.approvals||[]).find(a => a.approver_id === currentUser?.id && a.status === 'pending');
+      return `
+      <div class="rec-cand-card">
+        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,${sc},${sc}cc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📱</div>
+        <div class="rec-cand-body">
+          <div class="rec-cand-top">
+            <div style="flex:1">
+              <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.content}</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                ${(p.platforms||[]).map(pl => `<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
+              </div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">
+                ${p.author?.full_name||'Unknown'} · ${new Date(p.created_at).toLocaleDateString()}
+                ${p.scheduled_date ? ' · 📅 '+new Date(p.scheduled_date).toLocaleDateString() : ''}
+              </div>
+              ${(p.approvals||[]).length ? `
+                <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                  ${(p.approvals||[]).map(a => `
+                    <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;background:${a.status==='approved'?'var(--green-glow)':a.status==='rejected'?'var(--red-glow)':'var(--amber-glow)'};color:${a.status==='approved'?'var(--green)':a.status==='rejected'?'var(--red)':'var(--amber)'}">${a.approver?.full_name||'?'}: ${a.status}</span>
+                  `).join('')}
+                </div>` : ''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
+              <span class="cand-status-pill" style="background:${sc}22;color:${sc};border:1px solid ${sc}44">${p.status.replace(/_/g,' ')}</span>
+              ${pendingForMe ? `
+                <div style="display:flex;gap:4px">
+                  <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500">✓ Approve</button>
+                  <button data-reject-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500">✕ Reject</button>
+                </div>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No posts yet. Click "+ New Post" to create one.</div>' : ''}
+  </div>`;
+}
+
+function renderSocialPostModal() {
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <div class="modal-title">New Social Post</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="social-post-form" style="padding:20px 28px 24px">
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
+          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;line-height:1.7"></textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="platform-chips">
+            ${['LinkedIn','Facebook','Instagram','Twitter'].map(p => `
+              <label style="font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" name="platforms" value="${p}" style="accent-color:var(--accent)" /> ${p}
+              </label>`).join('')}
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
+          <input type="datetime-local" name="scheduled_date" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Requires Approval From</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="approver-chips">
+            ${state.team.filter(m => m.id !== currentUser?.id).map(m => `
+              <label style="font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" name="approvers" value="${m.id}" style="accent-color:var(--accent)" /> ${m.full_name||m.email}
+              </label>`).join('')}
+            ${state.team.filter(m => m.id !== currentUser?.id).length === 0 ? '<span style="font-size:11px;color:var(--text-3)">No other team members yet</span>' : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">Create Post</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Analytics View ───────────────────────────────────────────────────
+function renderAnalyticsView() {
+  const d = state.analyticsData;
+  if (!d) return '<div style="text-align:center;padding:60px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading analytics...</div>';
+  const maxDaily = Math.max(...(d.dailyData||[]).map(x=>x[1]),1);
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Website Analytics</div>
+      <div class="page-sub">Last ${state.analyticsDays} days · tracking your Replit site</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      ${[7,14,30].map(n => `<button class="stage-chip ${state.analyticsDays===n?'active':''}" data-analytics-days="${n}">${n}d</button>`).join('')}
+    </div>
+  </div>
+  <div class="metrics-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-value">${d.sessions}</div></div>
+    <div class="metric-card"><div class="metric-label">Page Views</div><div class="metric-value accent">${d.pageViews}</div></div>
+    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value green">${d.clicks}</div></div>
+    <div class="metric-card"><div class="metric-label">Avg Session Time</div><div class="metric-value">${d.avgTime}s</div></div>
+  </div>
+
+  ${d.dailyData?.length ? `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:20px">
+    <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:16px">Daily Page Views</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:120px">
+      ${d.dailyData.map(([day, count]) => `
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent-2)">${count}</div>
+          <div style="width:100%;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:4px 4px 0 0;height:${Math.max(count/maxDaily*100,4)}px;transition:height 0.3s"></div>
+          <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
+        </div>`).join('')}
+    </div>
+  </div>` : ''}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:14px">Top Pages</div>
+      ${d.topPages.length ? d.topPages.map((p,i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);width:20px">${i+1}.</span>
+          <span style="flex:1;font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2)">${p.count}</span>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--text-3)">No data yet</div>'}
+    </div>
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:14px">Tracking Setup</div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.7;margin-bottom:12px">Add this script to your Replit website's HTML to start tracking:</div>
+      <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2);word-break:break-all;line-height:1.6">&lt;script src="https://itimpact.netlify.app/tracker.js"&gt;&lt;/script&gt;</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px">Paste this before &lt;/body&gt; in your site.</div>
+    </div>
+  </div>`;
+}
+
+// ── Notification Panel ───────────────────────────────────────────────
+function renderNotifPanel() {
+  if (!state.showNotifPanel) return '';
+  return `
+  <div id="notif-panel" style="position:fixed;top:0;right:0;width:360px;height:100vh;background:var(--bg-1);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.4);animation:slideIn 0.2s ease">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
+      <div style="display:flex;gap:8px">
+        <button id="btn-mark-all-read" style="font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
+        <button id="btn-close-notif" style="font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:8px">
+      ${state.notifications.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No notifications yet</div>' : ''}
+      ${state.notifications.map(n => `
+        <div style="padding:12px 14px;border-radius:8px;margin-bottom:4px;background:${n.read?'transparent':'var(--accent-glow)'};cursor:pointer;transition:background 0.15s" data-notif-id="${n.id}" data-notif-link="${n.link||''}">
+          <div style="font-size:12px;font-weight:${n.read?'400':'600'};color:var(--text);margin-bottom:3px">${n.title}</div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.5">${n.body||''}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+  <style>@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}</style>`;
+}
+
+function timeAgo(date) {
+  const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
 }
 
 // ── Auth Screen ──────────────────────────────────────────────────────
@@ -768,20 +1094,29 @@ function sourceBadge(src) {
 // ── Sidebar ───────────────────────────────────────────────────────────
 function renderSidebar() {
   const navItems = [
-    {id:'leads',      icon:'⚡', label:'Leads', section:'crm'},
-    {id:'projects',   icon:'▣', label:'Projects', section:'crm'},
-    {id:'pipeline',   icon:'◈', label:'Pipeline', section:'sales'},
-    {id:'recruiting', icon:'⬡', label:'Recruiting', section:'sales'},
-    {id:'social',     icon:'✦', label:'Social Media', section:'tools'},
-    {id:'icp',        icon:'◎', label:'ICP & Triggers', section:'tools'},
-    {id:'disqualify', icon:'✕', label:'Disqualify', section:'tools'},
-    {id:'outreach',   icon:'✉', label:'Outreach', section:'tools'},
+    {id:'leads',          icon:'⚡', label:'Leads', section:'crm'},
+    {id:'projects',       icon:'▣', label:'Projects', section:'crm'},
+    {id:'team',           icon:'◉', label:'Team', section:'crm'},
+    {id:'social-planner', icon:'📋', label:'Social Planner', section:'crm'},
+    {id:'articles',       icon:'📝', label:'Articles', section:'crm'},
+    {id:'analytics',      icon:'📊', label:'Analytics', section:'crm'},
+    {id:'pipeline',       icon:'◈', label:'Pipeline', section:'sales'},
+    {id:'recruiting',     icon:'⬡', label:'Recruiting', section:'sales'},
+    {id:'social',         icon:'✦', label:'Content Engine', section:'tools'},
+    {id:'icp',            icon:'◎', label:'ICP & Triggers', section:'tools'},
+    {id:'disqualify',     icon:'✕', label:'Disqualify', section:'tools'},
+    {id:'outreach',       icon:'✉', label:'Outreach', section:'tools'},
   ];
   const profile = currentProfile;
   return `<aside class="sidebar">
     <div class="sidebar-brand">
       <div class="logo">IT<span>Impact</span></div>
       <div class="sub">CRM & Projects</div>
+    </div>
+    <div style="padding:4px 16px 8px;display:flex;justify-content:flex-end">
+      <button id="btn-notif-toggle" style="position:relative;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--text-2);font-size:14px;transition:all 0.15s">
+        🔔${state.unreadCount > 0 ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center">${state.unreadCount}</span>` : ''}
+      </button>
     </div>
     <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:8px 12px 4px">CRM</div></div>
     ${navItems.filter(n=>n.section==='crm').map(n=>`
@@ -1318,8 +1653,12 @@ function renderModal() {
 
 // ── Render ────────────────────────────────────────────────────────────
 function renderView() {
-  if (state.view==='leads')      return renderLeads();
-  if (state.view==='projects')   return renderProjects();
+  if (state.view==='leads')           return renderLeads();
+  if (state.view==='projects')        return renderProjects();
+  if (state.view==='team')            return renderTeam();
+  if (state.view==='articles')        return renderArticlesView();
+  if (state.view==='social-planner')  return renderSocialPlanner();
+  if (state.view==='analytics')       return renderAnalyticsView();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -1556,6 +1895,28 @@ function render() {
     document.body.appendChild(el.firstElementChild);
     attachLeadModalEvents();
   }
+  if (state.articleModal) {
+    const el = document.createElement('div');
+    el.innerHTML = renderArticleModal();
+    document.body.appendChild(el.firstElementChild);
+    attachArticleModalEvents();
+  }
+  if (state.socialPostModal) {
+    const el = document.createElement('div');
+    el.innerHTML = renderSocialPostModal();
+    document.body.appendChild(el.firstElementChild);
+    attachSocialPostModalEvents();
+  }
+  // Notification panel
+  const existingNotif = document.getElementById('notif-panel');
+  if (existingNotif) existingNotif.remove();
+  if (state.showNotifPanel) {
+    const el = document.createElement('div');
+    el.innerHTML = renderNotifPanel();
+    document.body.appendChild(el.firstElementChild);
+    if (el.querySelector('style')) document.body.appendChild(el.querySelector('style'));
+    attachNotifEvents();
+  }
 }
 
 // ── Attach Events ─────────────────────────────────────────────────────
@@ -1581,6 +1942,15 @@ function attachEvents() {
         state.projectsLoading = true; render();
         state.projects = await fetchProjects();
         state.projectsLoading = false;
+      }
+      if (el.dataset.nav === 'team') { state.team = await fetchTeam(); }
+      if (el.dataset.nav === 'articles' && state.articles.length === 0) { state.articles = await fetchArticles(); }
+      if (el.dataset.nav === 'social-planner' && state.socialPosts.length === 0) {
+        if (state.team.length === 0) state.team = await fetchTeam();
+        state.socialPosts = await fetchSocialPosts();
+      }
+      if (el.dataset.nav === 'analytics') {
+        state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
       }
       render();
     });
@@ -1724,6 +2094,19 @@ function attachEvents() {
   attachCopyButtons();
   attachLeadEvents();
   attachProjectEvents();
+  attachArticleEvents();
+  attachSocialPlannerEvents();
+  attachAnalyticsEvents();
+
+  // Notification bell toggle
+  document.getElementById('btn-notif-toggle')?.addEventListener('click', async () => {
+    state.showNotifPanel = !state.showNotifPanel;
+    if (state.showNotifPanel) {
+      state.notifications = await fetchNotifications();
+      state.unreadCount = await getUnreadCount();
+    }
+    render();
+  });
 }
 
 function attachExpandedEvents() {
@@ -2119,6 +2502,137 @@ async function loadProjectTabData() {
   if (state.projectTab === 'checkins') state.projectCheckins = await fetchCheckins(pid);
 }
 
+// ── Article Events ───────────────────────────────────────────────────
+function attachArticleEvents() {
+  document.getElementById('btn-new-article')?.addEventListener('click', () => {
+    state.articleModal = true; state.articleEditData = {}; render();
+  });
+  document.querySelectorAll('[data-article-filter]').forEach(el => {
+    el.addEventListener('click', () => { state.articleFilter = el.dataset.articleFilter; render(); });
+  });
+  document.querySelectorAll('[data-edit-article]').forEach(el => {
+    el.addEventListener('click', () => {
+      const a = state.articles.find(x => x.id === el.dataset.editArticle);
+      if (a) { state.articleModal = true; state.articleEditData = { ...a }; render(); }
+    });
+  });
+}
+
+function attachArticleModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const closeModal = () => { state.articleModal = null; state.articleEditData = null; overlay.remove(); render(); };
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.getElementById('btn-delete-article')?.addEventListener('click', async () => {
+    if (!confirm('Delete this article?')) return;
+    await deleteArticle(state.articleEditData.id);
+    state.articles = await fetchArticles();
+    showToast('Article deleted', 'success');
+    closeModal();
+  });
+  document.getElementById('article-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { title: fd.get('title'), body: fd.get('body'), category: fd.get('category'), cover_image: fd.get('cover_image'), status: fd.get('status') };
+    if (state.articleEditData?.id) {
+      await updateArticle(state.articleEditData.id, data);
+      showToast('Article updated', 'success');
+    } else {
+      await createArticle(data);
+      showToast('Article created!', 'success');
+    }
+    state.articles = await fetchArticles();
+    closeModal();
+  });
+}
+
+// ── Social Planner Events ────────────────────────────────────────────
+function attachSocialPlannerEvents() {
+  document.getElementById('btn-new-social-post')?.addEventListener('click', async () => {
+    if (state.team.length === 0) state.team = await fetchTeam();
+    state.socialPostModal = true; render();
+  });
+  document.querySelectorAll('[data-sp-filter]').forEach(el => {
+    el.addEventListener('click', () => { state.socialPostFilter = el.dataset.spFilter; render(); });
+  });
+  document.querySelectorAll('[data-approve-post]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await approvePost(btn.dataset.approvePost, btn.dataset.postId, true);
+      state.socialPosts = await fetchSocialPosts();
+      showToast('Post approved ✓', 'success');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-reject-post]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const comment = prompt('Reason for rejection (optional):') || '';
+      await approvePost(btn.dataset.rejectPost, btn.dataset.postId, false, comment);
+      state.socialPosts = await fetchSocialPosts();
+      showToast('Post rejected', 'info');
+      render();
+    });
+  });
+}
+
+function attachSocialPostModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const closeModal = () => { state.socialPostModal = null; overlay.remove(); render(); };
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.getElementById('social-post-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const platforms = fd.getAll('platforms');
+    const approverIds = fd.getAll('approvers');
+    await createSocialPost({
+      content: fd.get('content'),
+      platforms,
+      scheduled_date: fd.get('scheduled_date') || null,
+    }, approverIds);
+    state.socialPosts = await fetchSocialPosts();
+    showToast(approverIds.length ? 'Post submitted for approval' : 'Post created!', 'success');
+    closeModal();
+  });
+}
+
+// ── Analytics Events ─────────────────────────────────────────────────
+function attachAnalyticsEvents() {
+  document.querySelectorAll('[data-analytics-days]').forEach(el => {
+    el.addEventListener('click', async () => {
+      state.analyticsDays = parseInt(el.dataset.analyticsDays);
+      state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
+      render();
+    });
+  });
+}
+
+// ── Notification Events ──────────────────────────────────────────────
+function attachNotifEvents() {
+  document.getElementById('btn-close-notif')?.addEventListener('click', () => { state.showNotifPanel = false; render(); });
+  document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
+    await markAllRead();
+    state.notifications = await fetchNotifications();
+    state.unreadCount = 0;
+    render();
+  });
+  document.querySelectorAll('[data-notif-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      await markAsRead(el.dataset.notifId);
+      state.notifications = await fetchNotifications();
+      state.unreadCount = await getUnreadCount();
+      const link = el.dataset.notifLink;
+      if (link) { state.view = link; state.showNotifPanel = false; }
+      render();
+    });
+  });
+}
+
 function scrollChatToBottom() {
   setTimeout(() => {
     const el = document.getElementById('chat-messages');
@@ -2203,6 +2717,12 @@ async function boot() {
     render();
     state.leads = await fetchLeads();
     state.leadsLoading = false;
+    state.unreadCount = await getUnreadCount();
+    state.notifUnsub = subscribeToNotifications((notif) => {
+      state.unreadCount++;
+      showToast(notif.title, 'info');
+      render();
+    });
   }
   render();
   checkBackend().then(bs => { state.backendStatus = bs; });
