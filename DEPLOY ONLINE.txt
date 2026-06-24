@@ -1,0 +1,48 @@
+HOW TO PUT THIS ONLINE (3 options — pick one)
+================================================
+
+OPTION 1: NETLIFY — EASIEST, FREE, 2 MINUTES
+----------------------------------------------
+1. Go to https://netlify.com and sign up free (use Google login)
+2. On the dashboard, look for "Deploy manually" or drag-and-drop
+3. Open File Explorer → go to: C:\Users\Lenovo\sales-dashboard\dist
+4. DRAG the entire "dist" folder into the Netlify browser window
+5. Done! You get a URL like: https://amazing-name-123.netlify.app
+6. Share that URL with anyone — they open it in their browser
+
+To give it a custom name:
+- In Netlify → Site settings → Change site name → e.g. "itimpact-sales-os"
+- URL becomes: https://itimpact-sales-os.netlify.app
+
+
+OPTION 2: REPLIT — GOOD IF YOU WANT TO KEEP EDITING ONLINE
+------------------------------------------------------------
+1. Go to https://replit.com and sign up free
+2. Click "Create Repl" → choose "Node.js"
+3. Upload all files from: C:\Users\Lenovo\sales-dashboard\
+   (index.html, package.json, vite.config.js, src/ folder, server/ folder)
+4. In Replit shell, type: npm install
+5. Then type: npm run dev:ui
+6. Replit gives you a public URL automatically
+7. Share that URL
+
+Note: Replit free tier may sleep after inactivity.
+
+
+OPTION 3: RAILWAY — BEST IF YOU WANT APOLLO SEARCH TO WORK ONLINE
+------------------------------------------------------------------
+1. Go to https://railway.app and sign up free
+2. Connect your GitHub (or upload directly)
+3. Push the sales-dashboard folder to a GitHub repo
+4. In Railway → New Project → Deploy from GitHub repo
+5. Add environment variable: APOLLO_API_KEY=your_key
+6. Railway gives you a permanent URL
+
+================================================
+IMPORTANT NOTE:
+All the pipeline data, 28 prospects, 41 candidates, recruiting info
+is built INTO the app files — it works without any database.
+Changes (stage updates, notes) save to the viewer's browser only.
+If you want everyone to share the same data, that needs a database
+(let me know and I'll add that).
+================================================

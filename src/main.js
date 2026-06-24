@@ -1,0 +1,1471 @@
+import {
+  STAGES, prospects as rawProspects,
+  icpProfile, buyingTriggers, bestClients,
+  apolloFilters, disqualifiers, outreachSequences
+} from './data.js';
+import { positions, candidates as rawCandidates, CANDIDATE_STATUSES } from './recruiting.js';
+import { supabase, DB_ENABLED, loadDbState, syncProspect, syncCandidate, syncAddedProspect } from './supabase.js';
+
+// ── Persist & State ──────────────────────────────────────────────────
+const LS_KEY = 'sales_os_v2';
+const LS_ADDED = 'sales_os_added_v2';
+
+function loadSaved() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } }
+function loadAdded() { try { return JSON.parse(localStorage.getItem(LS_ADDED)) || []; } catch { return []; } }
+
+const saved = loadSaved();
+const addedFromSearch = loadAdded();
+
+const prospects = [
+  ...rawProspects.map(p => {
+    const s = saved[p.id] || {};
+    return { ...p,
+      stage: s.stage !== undefined ? s.stage : p.stage,
+      notes: s.notes !== undefined ? s.notes : p.notes,
+      researchDone: s.researchDone !== undefined ? s.researchDone : p.researchDone,
+      outreachWritten: s.outreachWritten !== undefined ? s.outreachWritten : p.outreachWritten,
+      spokenTo: s.spokenTo || false,
+      meetingBooked: s.meetingBooked || false,
+      meetingDate: s.meetingDate || null,
+    };
+  }),
+  ...addedFromSearch,
+];
+
+// ── Recruiting state ──────────────────────────────────────────────────
+const LS_REC = 'sales_os_recruiting_v1';
+function loadRec() { try { return JSON.parse(localStorage.getItem(LS_REC)) || {}; } catch { return {}; } }
+const recSaved = loadRec();
+const candidates = rawCandidates.map(c => {
+  const s = recSaved[c.id] || {};
+  return { ...c, status: s.status || c.status, emailSent: s.emailSent !== undefined ? s.emailSent : c.emailSent, notes: s.notes !== undefined ? s.notes : c.notes };
+});
+function persistCandidate(c) {
+  recSaved[c.id] = { status: c.status, emailSent: c.emailSent, notes: c.notes };
+  localStorage.setItem(LS_REC, JSON.stringify(recSaved));
+  syncCandidate(c); // sync to Supabase in background
+}
+
+const state = {
+  view: 'pipeline',
+  stageFilter: -1,
+  sectorFilter: 'All',
+  sort: 'priority',
+  expandedId: null,
+  modal: null,       // 'findLeads' | 'email'
+  modalData: null,
+  findLeadsResults: [],
+  findLeadsLoading: false,
+  findLeadsError: null,
+  backendStatus: null,
+  socialPlatform: 'linkedin',
+  socialPostType: 'casestudy',
+  socialAngle: 'sound',
+  searchQuery: '',
+  generatedPost: null,
+  recTab: 'positions',
+  recPosition: null,
+  recExpandedCandidate: null,
+  dbStatus: null,
+  persisted: loadSaved(),
+};
+
+function persistProspect(p) {
+  state.persisted[p.id] = {
+    stage: p.stage, notes: p.notes,
+    researchDone: p.researchDone, outreachWritten: p.outreachWritten,
+    spokenTo: p.spokenTo, meetingBooked: p.meetingBooked, meetingDate: p.meetingDate,
+  };
+  localStorage.setItem(LS_KEY, JSON.stringify(state.persisted));
+  syncProspect(p); // sync to Supabase in background
+}
+
+function persistAdded(p) {
+  localStorage.setItem(LS_ADDED, JSON.stringify(addedFromSearch));
+  if (p) syncAddedProspect(p); // sync new prospect to Supabase
+}
+
+function bantScore(b) { return b.b + b.a + b.n + b.t; }
+function avgBant() { return (prospects.reduce((s,p) => s + bantScore(p.bant), 0) / prospects.length).toFixed(1); }
+
+function filteredSorted() {
+  let list = [...prospects];
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    list = list.filter(p => p.name.toLowerCase().includes(q) || p.company.toLowerCase().includes(q) || p.sector.toLowerCase().includes(q) || (p.title||'').toLowerCase().includes(q));
+  }
+  if (state.stageFilter !== -1) list = list.filter(p => p.stage === state.stageFilter);
+  if (state.sectorFilter !== 'All') list = list.filter(p => p.sector === state.sectorFilter);
+  if (state.sort === 'priority') list.sort((a,b) => { if (a.priority !== b.priority) return a.priority?-1:1; return bantScore(b.bant)-bantScore(a.bant); });
+  else if (state.sort === 'bant') list.sort((a,b) => bantScore(b.bant)-bantScore(a.bant));
+  else if (state.sort === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
+  else if (state.sort === 'stage') list.sort((a,b) => a.stage-b.stage);
+  return list;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  let c = document.getElementById('toast-container');
+  if (!c) { c = document.createElement('div'); c.id='toast-container'; c.className='toast-container'; document.body.appendChild(c); }
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('fade-out'); setTimeout(()=>t.remove(),300); }, 2800);
+}
+
+// ── API ───────────────────────────────────────────────────────────────
+async function checkBackend() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    state.backendStatus = d;
+    return d;
+  } catch { state.backendStatus = { status:'unreachable' }; return null; }
+}
+
+async function searchApolloLeads(filters) {
+  state.findLeadsLoading = true;
+  state.findLeadsError = null;
+  renderModal();
+  try {
+    const r = await fetch('/api/leads/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(filters),
+    });
+    const d = await r.json();
+    if (!r.ok) { state.findLeadsError = d.error || 'Search failed'; state.findLeadsLoading = false; renderModal(); return; }
+    state.findLeadsResults = (d.people || []).map(mapApolloPersonToProspect);
+    state.findLeadsLoading = false;
+    renderModal();
+  } catch (e) {
+    state.findLeadsError = e.message;
+    state.findLeadsLoading = false;
+    renderModal();
+  }
+}
+
+function mapApolloPersonToProspect(ap) {
+  const lastName = ap.last_name_obfuscated || '***';
+  const firstName = ap.first_name || '';
+  const initials = (firstName[0]||'') + (lastName[0]||'');
+  const score = guessBANT(ap);
+  return {
+    id: 'a_' + ap.id,
+    name: `${firstName} ${lastName}`,
+    initials: initials.toUpperCase(),
+    title: ap.title || '',
+    company: ap.organization?.name || '',
+    sector: guessSector(ap),
+    location: ap.city ? `${ap.city}, ${ap.state || ''}` : 'United States',
+    stage: 0,
+    bant: score,
+    priority: bantScore(score) >= 17,
+    email: ap.has_email ? 'Enrichment required' : 'Not available in Apollo',
+    linkedin: 'Enrichment required',
+    signal: buildSignal(ap),
+    lastContact: null, notes: '',
+    researchDone: false, outreachWritten: false,
+    spokenTo: false, meetingBooked: false, meetingDate: null,
+    source: 'Apollo Agent',
+  };
+}
+
+function guessBANT(ap) {
+  const title = (ap.title||'').toLowerCase();
+  const org = (ap.organization?.name||'').toLowerCase();
+  const b = org.includes('private equity')||org.includes('pe ')||org.includes('capital')||org.includes('partner') ? 4 : 3;
+  const a = title.includes('managing partner')||title.includes('chief')||title.includes('cio')||title.includes('cto') ? 5 : title.includes('vp')||title.includes('partner') ? 4 : 3;
+  const n = title.includes('portfolio')||title.includes('operating')||title.includes('cio')||title.includes('cto') ? 4 : 3;
+  const t = ap.organization?.has_revenue ? 4 : 3;
+  return { b, a, n, t };
+}
+
+function guessSector(ap) {
+  const name = (ap.organization?.name||'').toLowerCase();
+  if (name.includes('dental')||name.includes('ortho')) return 'Dental';
+  if (name.includes('health')||name.includes('medical')||name.includes('hospital')||name.includes('clinic')) return 'Healthcare';
+  if (name.includes('venture')||name.includes('capital')||name.includes('equity')||name.includes('partner')) return 'PE/VC';
+  return 'PE/VC';
+}
+
+function buildSignal(ap) {
+  const title = ap.title||'Unknown Title';
+  const company = ap.organization?.name||'Unknown Company';
+  const size = ap.organization?.has_employee_count ? 'company' : 'firm';
+  return `${title} at ${company} — found via Apollo ICP search. ${ap.has_email?'Email available in Apollo.':''} ${ap.has_direct_phone==='Yes'?'Direct phone available.':''}`.trim();
+}
+
+// ── Email Generator ───────────────────────────────────────────────────
+const REF_CLIENTS = {
+  Healthcare: { name:'Sound Physicians', desc:'$1B+, 4,000 providers', outcome:'end-to-end IT assessment + AI/LLM infrastructure deployment that scaled across their entire provider network' },
+  Dental:     { name:'Clove Dental', desc:'major dental network', outcome:'digital front-door experience + custom application suite that drove operational efficiency and patient growth' },
+  'PE/VC':    { name:'Oshi Health (PE-backed)', desc:'fast-growing healthcare platform', outcome:'100-hour IT audit, product/IT org redesign, and record-breaking quarterly performance' },
+  Advisory:   { name:'Oshi Health (PE-backed)', desc:'fast-growing healthcare platform', outcome:'100-hour IT audit and IT org redesign post-acquisition' },
+};
+
+const SECTOR_PATTERNS = {
+  Healthcare: 'PE-backed healthcare platforms hit the same wall: fragmented EMR integrations, no unified data layer, and AI initiatives that stall because the infrastructure isn\'t there',
+  Dental:     'Multi-state dental DSOs scaling past 50 locations consistently run into the same IT ceiling — disparate practice management systems, no shared data architecture, and a digital patient experience that doesn\'t match the brand',
+  'PE/VC':    'Portfolio companies acquired in the last 12–24 months are operating on inherited tech stacks. The 100-day value creation plan rarely includes an IT assessment — and that gap compounds fast',
+  Advisory:   'Portfolio companies consistently lack enterprise-grade IT leadership in the first 2–3 years post-acquisition',
+};
+
+const CLOSING_QUESTIONS = {
+  Healthcare: 'Is there a current AI infrastructure or IT leadership gap across your health system?',
+  Dental:     'Is there a current digital infrastructure initiative underway — or is that gap still waiting to be addressed?',
+  'PE/VC':    'What does the current IT maturity look like across your active portfolio — and is there a specific platform where the gap is most acute?',
+  Advisory:   'Is there a portfolio company where an IT assessment or fractional CIO engagement would create immediate value?',
+};
+
+function generateEmail(p) {
+  const firstName = p.name.split(' ')[0];
+  const ref = REF_CLIENTS[p.sector] || REF_CLIENTS.Healthcare;
+  const pattern = SECTOR_PATTERNS[p.sector] || SECTOR_PATTERNS.Healthcare;
+  const closing = CLOSING_QUESTIONS[p.sector] || CLOSING_QUESTIONS.Healthcare;
+
+  const hook = buildEmailHook(p);
+  const subject = buildSubjectLine(p);
+
+  const body = `${firstName},\n\n${hook}\n\n${pattern}.\n\nWe built the solution for ${ref.name} (${ref.desc}) — ${ref.outcome}.\n\n${closing}`;
+
+  const linkedin = `${firstName} — ${buildLinkedInHook(p)} I work with ${p.sector === 'PE/VC' ? 'PE-backed platforms' : p.sector.toLowerCase() + ' organizations'} on exactly that execution layer — Fractional CIO, AI assessments, IT infrastructure. Worth connecting.`;
+
+  const followUp = `${firstName},\n\nFollowing up on my note from last week.\n\nI know inboxes are noisy — but the reason I reached out specifically is ${buildSpecificReason(p)}.\n\nWorth a 15-minute call this week?`;
+
+  return { subject, body, linkedin, followUp };
+}
+
+function buildEmailHook(p) {
+  const sig = p.signal || '';
+  if (sig.includes('acquired') || sig.includes('acquisition')) return `The ${p.company} acquisition tells me the team is moving fast — and that the tech integration work is either already underway or about to land on someone's desk.`;
+  if (sig.includes('Triage') || sig.includes('fractional')) return `Your title caught my attention — "Triage-CIO" makes it clear you already understand the value of fractional IT leadership. The question is whether the model you\'re currently using matches the pace of what ${p.company} is building.`;
+  if (sig.includes('dual') || sig.includes('Dual') || sig.includes('/')) return `Managing ${p.title} at ${p.company} simultaneously tells me you\'re covering a lot of ground with a lean team. That\'s exactly the situation where a fractional CIO engagement delivers the highest leverage.`;
+  if (sig.includes('AI') || sig.includes('agentic') || sig.includes('LLM')) return `The AI initiative at ${p.company} is the right move. The harder question — one most teams underestimate — is what the underlying IT infrastructure looks like when those use cases scale beyond the pilot.`;
+  if (sig.includes('breach') || sig.includes('security')) return `The security incident at ${p.company} creates an immediate mandate for infrastructure review. That kind of event either accelerates the IT modernization timeline — or exposes exactly how fragmented the stack has become.`;
+  return `I've been tracking ${p.company}'s growth and the ${p.sector} market more broadly — and your role sits exactly at the intersection of where IT leadership gaps create the most risk and the most opportunity.`;
+}
+
+function buildLinkedInHook(p) {
+  const sig = p.signal || '';
+  if (sig.includes('AI') || sig.includes('agentic')) return `saw the AI work happening at ${p.company} — impressive direction.`;
+  if (sig.includes('acquired') || sig.includes('acquisition')) return `noticed the recent acquisition activity at ${p.company}.`;
+  if (sig.includes('Triage') || sig.includes('fractional')) return `your Triage-CIO title immediately stood out — rare to see that level of clarity about the model.`;
+  return `noticed ${p.company}'s growth trajectory in ${p.sector}.`;
+}
+
+function buildSpecificReason(p) {
+  const sig = p.signal || '';
+  if (p.sector === 'Dental') return `${p.company} matches the exact profile of our Clove Dental engagement — PE-backed DSO scaling across multiple states with a digital infrastructure gap that compounds as location count grows`;
+  if (p.sector === 'Healthcare') return `${p.company}'s profile mirrors Sound Physicians before we engaged them — complex multi-site operations, AI ambitions, and an IT layer that wasn\'t built for the scale they\'re running at`;
+  return `${p.company} is at the stage where PE-backed platforms typically either accelerate their IT maturity or watch it become a drag on the value creation timeline`;
+}
+
+function buildSubjectLine(p) {
+  const sector = p.sector;
+  const company = p.company;
+  const map = {
+    Healthcare: [`${company} — AI infrastructure beyond the pilot`, `${company} — IT layer for what comes next`, `${company} — scaling the clinical AI stack`],
+    Dental: [`${company} — digital infrastructure for multi-state scale`, `${company} — IT foundation for DSO growth`, `${company} — beyond the practice management system`],
+    'PE/VC': [`${company} portfolio — IT due diligence gap`, `${company} — fractional CIO across portfolio`, `${company} platforms — AI readiness across the stack`],
+    Advisory: [`${company} — channel partner opportunity`, `${company} — fractional CIO collaboration`],
+  };
+  const lines = map[sector] || map.Healthcare;
+  return lines[0];
+}
+
+// ── Social Media Post Generator ───────────────────────────────────────
+const SOCIAL_POSTS = {
+  linkedin: {
+    casestudy: {
+      sound: {
+        title: 'Sound Physicians Case Study',
+        post: `We ran a full IT assessment across a $1B+ physician group with 4,000+ providers.\n\nHere's what we found in the first 30 days:\n\n• 7 disconnected EMR integrations with no shared data layer\n• 3 separate "AI initiatives" with no unified infrastructure\n• A CIO role that had been vacant for 11 months\n\nThe 100-day plan:\n1. Map every data flow across the organization\n2. Build the AI/LLM infrastructure layer\n3. Establish fractional CIO leadership with embedded talent\n\nResult: Live AI infrastructure across the entire provider network. Ahead of schedule.\n\nThe lesson: PE-backed healthcare platforms don't need more AI pilots. They need the infrastructure to run them at scale.\n\n#HealthcareIT #FractionalCIO #AIInfrastructure #PrivateEquity`,
+      },
+      oshi: {
+        title: 'Oshi Health Case Study',
+        post: `100-hour IT audit. 1 company. Everything changed.\n\nOshi Health brought us in for a rapid IT assessment post-funding round.\n\nWhat we found:\n• Product and IT orgs operating on separate roadmaps\n• No shared data infrastructure between clinical and operational systems\n• Hiring for a full-time CIO when a fractional engagement was the right move\n\nWhat we delivered:\n• Full product/IT org redesign\n• Unified data architecture\n• Fractional CIO leadership embedded through the transition\n\nRecord-breaking quarterly performance followed.\n\nFractional CIO isn't a compromise. For PE-backed platforms scaling fast, it's the exact right tool.\n\n#HealthTech #PrivateEquity #FractionalCIO #ITLeadership`,
+      },
+      clove: {
+        title: 'Clove Dental Case Study',
+        post: `Most dental DSOs scale the operations. Few scale the digital infrastructure.\n\nClove Dental was different — they wanted both.\n\nWe built:\n• A digital front-door experience that matched their brand promise\n• A custom application suite for operational efficiency\n• IT infrastructure designed for multi-state expansion\n• Patient care technology that actually improved outcomes\n\nThe result: A technology layer that could scale as fast as their acquisition strategy.\n\nPE-backed dental DSOs are among the most interesting IT challenges in healthcare today. The complexity of multi-state operations + consumer brand expectations + clinical compliance = an infrastructure problem that most CIOs don't have time to solve alone.\n\nThat's where fractional CIO leadership creates the most leverage.\n\n#DentalDSO #HealthcareIT #FractionalCIO #PrivateEquity`,
+      },
+    },
+    insight: {
+      pe: {
+        title: 'PE IT Insight',
+        post: `PE firms spend months on financial due diligence.\n\nMost spend less than 2 days on IT due diligence.\n\nHere's what gets missed:\n\n• Legacy ERP systems that block the integration thesis\n• Security debt that becomes a liability post-close\n• Data infrastructure that can't support the AI roadmap the board wants\n• IT leadership gaps that don't surface until the 100-day plan stalls\n\nThe firms that catch this early don't have better financial models.\n\nThey have an IT operating partner who's done this before.\n\n#PrivateEquity #ITDueDiligence #ValueCreation #FractionalCIO`,
+      },
+      ai: {
+        title: 'AI in Healthcare',
+        post: `Every PE-backed healthcare platform now has an "AI strategy."\n\nMost will fail to execute.\n\nNot because the models aren't good enough.\nBecause the infrastructure underneath them isn't built for production.\n\nThe 3 things that kill healthcare AI deployments:\n\n1. No unified data layer across systems (EMR, billing, ops all siloed)\n2. No embedded technical leadership to drive adoption\n3. Pilots that work in isolation but break at scale\n\nSound Physicians ran into all three. We fixed all three.\n\nAI in healthcare isn't a strategy problem. It's an infrastructure problem.\n\n#HealthcareAI #AIInfrastructure #FractionalCIO #DigitalHealth`,
+      },
+    },
+    hottake: {
+      cio: {
+        title: 'Hot Take: Full-Time CIO',
+        post: `Hiring a full-time CIO for your PE portfolio company is almost always the wrong move in years 1–3.\n\nControversial? Maybe. But here's the math:\n\n• Full-time CIO: $350K–$500K fully loaded + 6-month search timeline\n• Fractional CIO: Engaged in 2 weeks, embedded immediately, 30–60% of the cost\n\nMore importantly:\n\nA full-time CIO hire signals you know exactly what you need. Most PE portfolio companies don't — they need someone who can assess, prioritize, and build the roadmap BEFORE you hire permanently.\n\nFractional CIO isn't a budget play.\n\nIt's the right sequence.\n\nAssess → Build → Hire permanent when you know exactly what you need.\n\n#PrivateEquity #FractionalCIO #ITLeadership #ValueCreation`,
+      },
+    },
+    question: {
+      dso: {
+        title: 'Engagement Question',
+        post: `Question for anyone in PE-backed healthcare or dental:\n\nWhat's the #1 IT mistake you've seen portfolio companies make in the first 90 days post-acquisition?\n\nFor us, it's almost always the same answer: assuming the inherited tech stack is good enough to scale.\n\nIt never is.\n\n#PrivateEquity #HealthcareIT #DentalDSO #ITLeadership`,
+      },
+    },
+  },
+};
+
+function getPostContent() {
+  const p = SOCIAL_POSTS;
+  const platform = state.socialPlatform;
+  const type = state.socialPostType;
+  const angle = state.socialAngle;
+  try {
+    return p[platform]?.[type]?.[angle] || null;
+  } catch { return null; }
+}
+
+// ── Render Helpers ────────────────────────────────────────────────────
+function bantBarHTML(bant) {
+  const groups = [{k:'b',v:bant.b,c:'filled-b'},{k:'a',v:bant.a,c:'filled-a'},{k:'n',v:bant.n,c:'filled-n'},{k:'t',v:bant.t,c:'filled-t'}];
+  return '<div class="bant-bar">' + groups.map((g,i) =>
+    Array.from({length:5},(_,j)=>`<div class="bant-seg ${j<g.v?g.cls:''}"></div>`).join('') +
+    (i<3?'<div class="bant-divider"></div>':'')
+  ).join('') + '</div>';
+}
+
+function stagePillHTML(s) {
+  return `<span class="stage-pill stage-${s}">${STAGES[s]}</span>`;
+}
+
+function sourceBadge(src) {
+  if (!src) return '';
+  return src === 'Apollo Agent'
+    ? `<span class="source-badge apollo">⚡ Apollo</span>`
+    : `<span class="source-badge manual">Manual</span>`;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────
+function renderSidebar() {
+  const navItems = [
+    {id:'pipeline',   icon:'◈', label:'Pipeline'},
+    {id:'recruiting', icon:'⬡', label:'Recruiting'},
+    {id:'social',     icon:'✦', label:'Social Media'},
+    {id:'icp',        icon:'◎', label:'ICP & Triggers'},
+    {id:'disqualify', icon:'✕', label:'Disqualify'},
+    {id:'outreach',   icon:'✉', label:'Outreach'},
+  ];
+  return `<aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">Sales<span>OS</span></div>
+      <div class="sub">B2B Pipeline</div>
+    </div>
+    ${navItems.map(n=>`
+      <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
+        <span class="nav-icon">${n.icon}</span>${n.label}
+      </div>`).join('')}
+    <div class="sidebar-footer">
+      Updated May 30, 2026
+      ${state.dbStatus === 'connected'
+        ? '<div style="margin-top:8px;color:#10b981">● Database live</div>'
+        : state.dbStatus === 'error'
+        ? '<div style="margin-top:8px;color:#ef4444">● DB error</div>'
+        : state.dbStatus === 'not-configured'
+        ? '<div style="margin-top:8px;color:#5a5a72">● Local only</div>'
+        : ''}
+    </div>
+  </aside>`;
+}
+
+// ── Pipeline View ─────────────────────────────────────────────────────
+function renderPipeline() {
+  const list = filteredSorted();
+  const sectors = ['All', ...new Set(prospects.map(p=>p.sector))];
+  const stageGroups = STAGES.map((s,i)=>({label:s,count:prospects.filter(p=>p.stage===i).length}));
+  const notContacted = prospects.filter(p=>p.stage===0).length;
+  const outreachActive = prospects.filter(p=>p.stage>=1&&p.stage<=2).length;
+  const replied = prospects.filter(p=>p.stage===3).length;
+  const spokenTo = prospects.filter(p=>p.spokenTo).length;
+  const meetings = prospects.filter(p=>p.meetingBooked).length;
+  const priorityCount = prospects.filter(p=>p.priority).length;
+  const researchDone = prospects.filter(p=>p.researchDone).length;
+  const outreachWritten = prospects.filter(p=>p.outreachWritten).length;
+  const total = prospects.length || 1;
+
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Pipeline</div>
+      <div class="page-sub">${prospects.length} prospects · ${priorityCount} priority · ${spokenTo} spoken to · ${meetings} meetings</div>
+    </div>
+    <button class="find-leads-btn" id="btn-find-leads">⚡ Find More Leads</button>
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric-card"><div class="metric-label">Total Prospects</div><div class="metric-value">${prospects.length}</div><div class="metric-sub">${priorityCount} high priority</div></div>
+    <div class="metric-card"><div class="metric-label">Not Contacted</div><div class="metric-value">${notContacted}</div><div class="metric-sub">${Math.round(notContacted/total*100)}% of pipeline</div></div>
+    <div class="metric-card"><div class="metric-label">Outreach Active</div><div class="metric-value accent">${outreachActive}</div><div class="metric-sub">${researchDone} researched · ${outreachWritten} drafted</div></div>
+    <div class="metric-card"><div class="metric-label">Replied / Spoken</div><div class="metric-value green">${replied + spokenTo}</div><div class="metric-sub">${meetings} meetings booked</div></div>
+    <div class="metric-card"><div class="metric-label">Avg BANT</div><div class="metric-value accent">${avgBant()}</div><div class="metric-sub">out of 20</div></div>
+  </div>
+
+  <div class="funnel-row">
+    ${stageGroups.map((g,i) => {
+      const pct = Math.max(g.count / total * 100, 3);
+      return `<div class="funnel-seg funnel-s${i}" style="flex:${pct}" data-stage="${i}" title="${g.label}: ${g.count}">
+        ${g.count||''}
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="pipeline-search" placeholder="Search prospects by name, company, or sector..." value="${state.searchQuery||''}" />
+  </div>
+
+  <div class="stage-bar">
+    <div class="stage-chip ${state.stageFilter===-1?'active':''}" data-stage="-1">All (${prospects.length})</div>
+    ${stageGroups.map((g,i)=>`<div class="stage-chip ${state.stageFilter===i?'active':''}" data-stage="${i}">${g.label} (${g.count})</div>`).join('')}
+  </div>
+
+  <div class="filter-row">
+    <span class="filter-label">Sector</span>
+    ${sectors.map(s=>`<div class="sector-chip ${state.sectorFilter===s?'active':''}" data-sector="${s}">${s}</div>`).join('')}
+    <select class="sort-select">
+      <option value="priority" ${state.sort==='priority'?'selected':''}>Priority</option>
+      <option value="bant" ${state.sort==='bant'?'selected':''}>BANT Score</option>
+      <option value="name" ${state.sort==='name'?'selected':''}>Name A–Z</option>
+      <option value="stage" ${state.sort==='stage'?'selected':''}>Stage</option>
+    </select>
+  </div>
+
+  <table class="prospect-table">
+    <thead><tr>
+      <th>Prospect</th><th>Company</th><th>Sector</th><th>Stage</th>
+      <th>BANT</th><th>Status</th><th>Actions</th><th></th>
+    </tr></thead>
+    <tbody id="prospect-tbody">
+      ${list.map(p=>renderProspectRows(p)).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderProspectRows(p) {
+  const isExpanded = state.expandedId === p.id;
+  const expandedTr = isExpanded
+    ? `<tr class="expanded-row"><td colspan="8">${renderExpandedContent(p)}</td></tr>` : '';
+
+  return `
+  <tr class="prospect-row ${p.priority?'priority-row':''}" data-id="${p.id}">
+    <td>
+      <div class="prospect-info">
+        <div class="avatar">${p.initials}</div>
+        <div>
+          <div class="prospect-name">${p.name}${p.priority?' <span class="star">★</span>':''}</div>
+          <div class="prospect-title">${p.title}</div>
+        </div>
+      </div>
+    </td>
+    <td><span class="company-name">${p.company}</span>${sourceBadge(p.source)}</td>
+    <td><span class="sector-badge">${p.sector}</span></td>
+    <td>${stagePillHTML(p.stage)}${p.spokenTo?'<span class="mini-badge spoken">📞 Spoken</span>':''}${p.meetingBooked?'<span class="mini-badge meeting">📅 Meeting</span>':''}</td>
+    <td>${bantBarHTML(p.bant)}<span class="bant-score-num">${bantScore(p.bant)}</span></td>
+    <td>
+      <div class="status-dots">
+        <div class="status-dot ${p.researchDone?'on':'off'}" title="Research done"></div>
+        <div class="status-dot ${p.outreachWritten?'on':'off'}" title="Outreach written"></div>
+      </div>
+    </td>
+    <td>
+      <div class="row-actions">
+        <button class="row-action-btn email-btn" data-email="${p.id}" title="Write Email">✉</button>
+      </div>
+    </td>
+    <td><span class="chevron ${isExpanded?'open':''}">▾</span></td>
+  </tr>
+  ${expandedTr}`;
+}
+
+function renderExpandedContent(p) {
+  const email = generateEmail(p);
+  return `
+  <div class="expanded-content">
+    <div class="expanded-grid">
+      <div>
+        <div class="expanded-section-title">Buying Signal</div>
+        <div class="signal-text">${p.signal}</div>
+      </div>
+      <div>
+        <div class="expanded-section-title">BANT Breakdown</div>
+        <div class="bant-detail">
+          ${[['Budget','b','on-b'],['Authority','a','on-a'],['Need','n','on-n'],['Timeline','t','on-t']].map(([label,key,cls])=>`
+            <div class="bant-row">
+              <span class="bant-key">${label}</span>
+              <div class="bant-pips">${Array.from({length:5},(_,i)=>`<div class="bant-pip ${i<p.bant[key]?cls:''}"></div>`).join('')}</div>
+              <span class="bant-num">${p.bant[key]}/5</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="expanded-section-title">Contact Info</div>
+        <div class="contact-info">
+          <div class="contact-row"><span class="contact-row-label">Email</span><span class="contact-row-val">${p.email}</span></div>
+          <div class="contact-row"><span class="contact-row-label">LinkedIn</span><span class="contact-row-val">${p.linkedin}</span></div>
+          <div class="contact-row"><span class="contact-row-label">Location</span><span class="contact-row-val">${p.location}</span></div>
+          ${p.lastContact?`<div class="contact-row"><span class="contact-row-label">Last Touch</span><span class="contact-row-val">${p.lastContact}</span></div>`:''}
+        </div>
+      </div>
+    </div>
+
+    <div class="expanded-section-title" style="margin-top:16px;margin-bottom:6px">Notes</div>
+    <textarea class="notes-area" data-id="${p.id}" placeholder="Add notes…">${p.notes}</textarea>
+
+    <div class="toggle-row">
+      <button class="toggle-btn ${p.researchDone?'on':''}" data-toggle="research" data-id="${p.id}">
+        ${p.researchDone?'✓':'○'} Research done
+      </button>
+      <button class="toggle-btn ${p.outreachWritten?'on':''}" data-toggle="outreach" data-id="${p.id}">
+        ${p.outreachWritten?'✓':'○'} Outreach written
+      </button>
+      <button class="toggle-btn ${p.spokenTo?'on':''}" data-toggle="spoken" data-id="${p.id}">
+        📞 ${p.spokenTo?'Spoken ✓':'Mark Spoken To'}
+      </button>
+      <button class="toggle-btn ${p.meetingBooked?'on meeting-on':''}" data-toggle="meeting" data-id="${p.id}">
+        📅 ${p.meetingBooked?`Meeting: ${p.meetingDate||'booked'}`:'Book Meeting'}
+      </button>
+      <div class="stage-nav">
+        <button class="stage-nav-btn" data-stage-move="-1" data-id="${p.id}" ${p.stage===0?'disabled':''}>← Back</button>
+        <span class="current-stage-label">${STAGES[p.stage]}</span>
+        <button class="stage-nav-btn" data-stage-move="1" data-id="${p.id}" ${p.stage===STAGES.length-1?'disabled':''}>Forward →</button>
+      </div>
+    </div>
+
+    <div class="email-preview-row">
+      <div class="email-preview-label">✉ Generated Email</div>
+      <div class="email-subject-preview">${email.subject}</div>
+      <div class="email-actions">
+        <button class="copy-btn" data-copy="${escHtml(email.subject)}" data-label="Subject">Copy Subject</button>
+        <button class="copy-btn" data-copy="${escHtml(email.body)}" data-label="Email">Copy Email</button>
+        <button class="copy-btn" data-copy="${escHtml(email.linkedin)}" data-label="LinkedIn">Copy LinkedIn</button>
+        <button class="expand-email-btn btn-accent" data-email="${p.id}">✉ Full Email →</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Find Leads Modal ──────────────────────────────────────────────────
+function renderFindLeadsModal() {
+  const bs = state.backendStatus;
+  const apolloOk = bs && bs.apolloConfigured;
+  const backendOk = bs && bs.status === 'ok';
+
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box modal-wide">
+      <div class="modal-header">
+        <div class="modal-title">⚡ Find More Leads</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+
+      ${!backendOk ? `
+        <div class="setup-warning">
+          <div class="setup-warning-title">⚠ API server not reachable</div>
+          <div class="setup-warning-body">Start the backend server:<br><code>npm run dev:api</code><br>Or restart everything with <code>npm run dev</code></div>
+        </div>` :
+      !apolloOk ? `
+        <div class="setup-warning">
+          <div class="setup-warning-title">🔑 Apollo API key not configured</div>
+          <div class="setup-warning-body">
+            1. Go to <strong>app.apollo.io → Settings → Integrations → API Keys</strong><br>
+            2. Copy your key<br>
+            3. Open <code>sales-dashboard/.env</code> and set:<br>
+            <code>APOLLO_API_KEY=your_key_here</code><br>
+            4. Restart with <code>npm run dev</code>
+          </div>
+        </div>` : ''}
+
+      <div class="find-leads-filters">
+        <div class="filter-group">
+          <label class="filter-group-label">Focus Sector</label>
+          <div class="filter-chips" id="fl-sector-chips">
+            ${['PE/VC','Healthcare','Dental'].map(s=>`
+              <div class="sector-chip active" data-fl-sector="${s}">${s}</div>`).join('')}
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-group-label">Locations</label>
+          <div class="filter-chips" id="fl-loc-chips">
+            ${['New York, NY','Chicago, IL','Boston, MA','Dallas, TX','Atlanta, GA'].map(l=>`
+              <div class="sector-chip active" data-fl-loc="${l}">${l.split(',')[0]}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <button class="find-leads-search-btn ${!backendOk||!apolloOk?'disabled':''}" id="fl-search-btn"
+        ${!backendOk||!apolloOk?'disabled':''}>
+        ${state.findLeadsLoading ? '<span class="spinner"></span> Searching Apollo…' : '🔍 Search Apollo Now'}
+      </button>
+
+      ${state.findLeadsError ? `<div class="find-leads-error">⚠ ${state.findLeadsError}</div>` : ''}
+
+      ${state.findLeadsResults.length ? `
+        <div class="find-leads-results">
+          <div class="find-leads-results-header">${state.findLeadsResults.length} results — click Add to include in pipeline</div>
+          ${state.findLeadsResults.map(p => {
+            const alreadyAdded = prospects.some(x => x.id === p.id || (x.name===p.name && x.company===p.company));
+            return `
+            <div class="fl-result-card ${alreadyAdded?'already-added':''}">
+              <div class="fl-result-avatar">${p.initials}</div>
+              <div class="fl-result-info">
+                <div class="fl-result-name">${p.name}</div>
+                <div class="fl-result-sub">${p.title} · ${p.company}</div>
+                <div class="fl-result-sig">${p.signal}</div>
+              </div>
+              <div class="fl-result-bant">BANT ${bantScore(p.bant)}</div>
+              ${alreadyAdded
+                ? `<div class="fl-result-added-label">✓ In pipeline</div>`
+                : `<button class="fl-add-btn" data-fl-add-idx="${state.findLeadsResults.indexOf(p)}">+ Add</button>`}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Email Modal ───────────────────────────────────────────────────────
+function renderEmailModal(p) {
+  const email = generateEmail(p);
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box modal-email">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">✉ Outreach for ${p.name}</div>
+          <div class="modal-sub">${p.title} · ${p.company}</div>
+        </div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+
+      <div class="email-modal-sections">
+        <div class="email-modal-section">
+          <div class="email-modal-section-label">
+            Subject Line
+            <button class="copy-btn" data-copy="${escHtml(email.subject)}" data-label="Subject">Copy</button>
+          </div>
+          <div class="email-subject-box">${email.subject}</div>
+        </div>
+
+        <div class="email-modal-section">
+          <div class="email-modal-section-label">
+            Cold Email — Touch 1
+            <button class="copy-btn" data-copy="${escHtml(email.body)}" data-label="Email">Copy</button>
+          </div>
+          <div class="email-body-box">${email.body}</div>
+        </div>
+
+        <div class="email-modal-section">
+          <div class="email-modal-section-label">
+            Follow-Up — Touch 2
+            <button class="copy-btn" data-copy="${escHtml(email.followUp)}" data-label="Follow-up">Copy</button>
+          </div>
+          <div class="email-body-box">${email.followUp}</div>
+        </div>
+
+        <div class="email-modal-section">
+          <div class="email-modal-section-label">
+            LinkedIn Connection Request
+            <button class="copy-btn" data-copy="${escHtml(email.linkedin)}" data-label="LinkedIn">Copy</button>
+          </div>
+          <div class="email-body-box">${email.linkedin}</div>
+        </div>
+      </div>
+
+      <div class="email-modal-footer">
+        <button class="toggle-btn ${p.outreachWritten?'on':''}" data-toggle="outreach" data-id="${p.id}" id="modal-outreach-toggle">
+          ${p.outreachWritten?'✓ Outreach marked written':'○ Mark outreach written'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Social Media View ─────────────────────────────────────────────────
+function renderSocial() {
+  const platforms = [{id:'linkedin',label:'LinkedIn',icon:'in'}];
+  const postTypes = [
+    {id:'casestudy',label:'Case Study'},
+    {id:'insight',label:'Insight'},
+    {id:'hottake',label:'Hot Take'},
+    {id:'question',label:'Question'},
+  ];
+  const angles = {
+    casestudy: [{id:'sound',label:'Sound Physicians'},{id:'oshi',label:'Oshi Health'},{id:'clove',label:'Clove Dental'}],
+    insight:   [{id:'pe',label:'PE IT Due Diligence'},{id:'ai',label:'AI in Healthcare'}],
+    hottake:   [{id:'cio',label:'Full-Time CIO Myth'}],
+    question:  [{id:'dso',label:'DSO IT Question'}],
+  };
+  const currentAngles = angles[state.socialPostType] || [];
+  const post = getPostContent();
+
+  return `
+  <div class="page-header">
+    <div class="page-title">Social Media</div>
+    <div class="page-sub">LinkedIn content engine · case studies · thought leadership</div>
+  </div>
+
+  <div class="social-layout">
+    <div class="social-controls">
+      <div class="social-section-title">Platform</div>
+      <div class="social-platform-tabs">
+        ${platforms.map(pl=>`
+          <button class="social-tab ${state.socialPlatform===pl.id?'active':''}" data-platform="${pl.id}">
+            <span class="social-tab-icon">${pl.icon}</span>${pl.label}
+          </button>`).join('')}
+      </div>
+
+      <div class="social-section-title" style="margin-top:20px">Post Type</div>
+      <div class="social-type-list">
+        ${postTypes.map(t=>`
+          <button class="social-type-btn ${state.socialPostType===t.id?'active':''}" data-posttype="${t.id}">
+            ${t.label}
+          </button>`).join('')}
+      </div>
+
+      <div class="social-section-title" style="margin-top:20px">Angle / Reference</div>
+      <div class="social-type-list">
+        ${currentAngles.map(a=>`
+          <button class="social-type-btn ${state.socialAngle===a.id?'active':''}" data-angle="${a.id}">
+            ${a.label}
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <div class="social-preview">
+      ${post ? `
+        <div class="social-post-header">
+          <div class="social-post-platform">LinkedIn · ${post.title}</div>
+          <button class="copy-btn" data-copy="${escHtml(post.post)}" data-label="Post" style="margin-left:auto">Copy Post</button>
+        </div>
+        <div class="social-post-preview">
+          <div class="social-post-author">
+            <div class="social-author-avatar">A</div>
+            <div>
+              <div class="social-author-name">Amish · IT Impact Consulting</div>
+              <div class="social-author-sub">Fractional CIO · PE-backed healthcare & dental</div>
+            </div>
+          </div>
+          <div class="social-post-body">${post.post.replace(/\n/g,'<br>')}</div>
+          <div class="social-post-actions">
+            <span class="social-reaction">👍 Like</span>
+            <span class="social-reaction">💬 Comment</span>
+            <span class="social-reaction">🔁 Repost</span>
+          </div>
+        </div>` :
+        `<div class="social-empty">Select a post type and angle to generate content</div>`}
+
+      <div class="social-content-ideas">
+        <div class="social-section-title" style="margin-top:28px;margin-bottom:14px">Content Ideas This Week</div>
+        ${[
+          {day:'Mon',type:'Case Study',hook:'Sound Physicians AI infrastructure — what we built in 90 days'},
+          {day:'Wed',type:'Insight',hook:'Why PE firms skip IT due diligence (and what it costs them at exit)'},
+          {day:'Fri',type:'Hot Take',hook:'Hiring a full-time CIO before you have a roadmap is backwards'},
+        ].map(i=>`
+          <div class="content-idea-card">
+            <div class="content-idea-day">${i.day}</div>
+            <div class="content-idea-type">${i.type}</div>
+            <div class="content-idea-hook">${i.hook}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── ICP View ──────────────────────────────────────────────────────────
+function renderICP() {
+  return `
+  <div class="page-header">
+    <div class="page-title">ICP & Triggers</div>
+    <div class="page-sub">Ideal customer profile · buying signals · reference clients</div>
+  </div>
+  <div class="icp-grid">
+    <div class="icp-card"><div class="icp-card-title">Target Titles</div><div class="tag-list">${icpProfile.titles.map(t=>`<span class="tag accent">${t}</span>`).join('')}</div></div>
+    <div class="icp-card"><div class="icp-card-title">Target Sectors</div><div class="tag-list">${icpProfile.sectors.map(s=>`<span class="tag">${s}</span>`).join('')}</div></div>
+    <div class="icp-card"><div class="icp-card-title">Geography</div><div class="tag-list">${icpProfile.geography.map(g=>`<span class="tag">${g}</span>`).join('')}</div></div>
+    <div class="icp-card"><div class="icp-card-title">Company Size</div><div class="size-text">${icpProfile.companySize}</div><div style="margin-top:12px"><div class="icp-card-title">Seniority</div><div class="tag-list">${icpProfile.seniority.map(s=>`<span class="tag">${s}</span>`).join('')}</div></div></div>
+  </div>
+  <div class="section-heading">Buying Triggers</div>
+  <div class="triggers-grid">
+    ${buyingTriggers.map(t=>`<div class="trigger-card"><div class="trigger-num">${t.num}</div><div><div class="trigger-title">${t.title}</div><div class="trigger-desc">${t.desc}</div></div></div>`).join('')}
+  </div>
+  <div class="section-heading">Best Reference Clients</div>
+  <div class="clients-grid">
+    ${bestClients.map(c=>`<div class="client-card"><div class="client-name">${c.name}</div><div class="client-desc">${c.desc}</div><div class="client-work">${c.work}</div><div class="client-sector">${c.sector}</div></div>`).join('')}
+  </div>`;
+}
+
+// ── Disqualify View ───────────────────────────────────────────────────
+function renderDisqualify() {
+  return `
+  <div class="page-header">
+    <div class="page-title">Disqualify</div>
+    <div class="page-sub">Hard stops and caution flags · Apollo search filters</div>
+  </div>
+  <div class="section-heading" style="margin-top:0">Disqualification Rules</div>
+  <div class="disq-grid">
+    ${disqualifiers.map(d=>`<div class="disq-card"><div class="disq-badge ${d.type}">${d.type==='hard'?'HARD STOP':'CAUTION'}</div><div><div class="disq-title">${d.title}</div><div class="disq-desc">${d.desc}</div></div></div>`).join('')}
+  </div>
+  <div class="section-heading">Apollo Search Filters</div>
+  <div class="apollo-grid">
+    ${Object.entries(apolloFilters).map(([key,vals])=>`<div class="apollo-card"><div class="apollo-card-title">${key.replace(/([A-Z])/g,' $1').trim()}</div><div class="tag-list">${vals.map(v=>`<span class="tag">${v}</span>`).join('')}</div></div>`).join('')}
+  </div>`;
+}
+
+// ── Outreach View ─────────────────────────────────────────────────────
+function renderOutreach() {
+  const seqs = [outreachSequences.neilBansal, outreachSequences.jamesDale];
+  return `
+  <div class="page-header">
+    <div class="page-title">Outreach</div>
+    <div class="page-sub">Written sequences · copy-ready email and LinkedIn</div>
+  </div>
+  ${seqs.map(seq=>`
+    <div class="outreach-prospect-block">
+      <div class="outreach-prospect-header">
+        <div>
+          <div class="outreach-prospect-name">${seq.prospect.split('—')[0].trim()}</div>
+          <div class="outreach-prospect-role">${seq.prospect.split('—')[1]?.trim()||''}</div>
+        </div>
+        <span class="outreach-subject-badge">${seq.subjectLine}</span>
+      </div>
+      <div class="outreach-section">
+        <div class="outreach-section-label"><span>${seq.touch1.type} · Subject</span><button class="copy-btn" data-copy="${escHtml(seq.touch1.subject)}" data-label="Subject">Copy</button></div>
+        <div class="outreach-subject">${seq.touch1.subject}</div>
+      </div>
+      <div class="outreach-section">
+        <div class="outreach-section-label"><span>Email Body</span><button class="copy-btn" data-copy="${escHtml(seq.touch1.body)}" data-label="Email">Copy</button></div>
+        <div class="outreach-body">${seq.touch1.body}</div>
+      </div>
+      ${seq.linkedinRequest?`<div class="outreach-section"><div class="outreach-section-label"><span>LinkedIn</span><button class="copy-btn" data-copy="${escHtml(seq.linkedinRequest)}" data-label="LinkedIn">Copy</button></div><div class="outreach-body">${seq.linkedinRequest}</div></div>`:''}
+    </div>`).join('')}`;
+}
+
+// ── Escape HTML ───────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Render Modal ──────────────────────────────────────────────────────
+function renderModal() {
+  const existing = document.getElementById('modal-overlay');
+  if (existing) existing.remove();
+  if (!state.modal) return;
+
+  let html = '';
+  if (state.modal === 'findLeads') html = renderFindLeadsModal();
+  else if (state.modal === 'email') {
+    const p = prospects.find(x=>x.id===state.modalData);
+    if (p) html = renderEmailModal(p);
+  }
+  if (!html) return;
+
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  document.body.appendChild(el.firstElementChild);
+  attachModalEvents();
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function renderView() {
+  if (state.view==='pipeline')   return renderPipeline();
+  if (state.view==='recruiting') return renderRecruiting();
+  if (state.view==='social')     return renderSocial();
+  if (state.view==='icp')        return renderICP();
+  if (state.view==='disqualify') return renderDisqualify();
+  if (state.view==='outreach')   return renderOutreach();
+  return '';
+}
+
+// ── Recruiting View ───────────────────────────────────────────────────
+function statusCfg(id) { return CANDIDATE_STATUSES.find(s=>s.id===id) || CANDIDATE_STATUSES[0]; }
+
+function renderRecruiting() {
+  const tabs = [
+    {id:'positions', label:'Positions', count: positions.length},
+    {id:'candidates', label:'All Candidates', count: candidates.length},
+    {id:'pool', label:'Talent Pool', count: candidates.length},
+  ];
+  const activePos = state.recPosition || positions[0].id;
+
+  return `
+  <div class="page-header" style="margin-bottom:0">
+    <div>
+      <div class="page-title">Recruiting</div>
+      <div class="page-sub">${positions.filter(p=>p.status==='Active').length} active positions · ${candidates.length} candidates tracked</div>
+    </div>
+  </div>
+
+  <div class="rec-tabs">
+    ${tabs.map(t=>`<button class="rec-tab ${state.recTab===t.id?'active':''}" data-rectab="${t.id}">${t.label} <span class="rec-tab-count">${t.count}</span></button>`).join('')}
+  </div>
+
+  ${state.recTab==='positions' ? renderPositionsTab() : ''}
+  ${state.recTab==='candidates' ? renderCandidatesTab(activePos) : ''}
+  ${state.recTab==='pool' ? renderTalentPoolTab() : ''}`;
+}
+
+function renderPositionsTab() {
+  return `
+  <div class="rec-positions-grid">
+    ${positions.map(pos => {
+      const posCands = candidates.filter(c=>c.positionId===pos.id);
+      const shortlisted = posCands.filter(c=>c.status==='shortlisted').length;
+      const emailSent = posCands.filter(c=>c.emailSent).length;
+      const isExpanded = state.recExpandedCandidate === pos.id;
+      return `
+      <div class="rec-pos-card ${pos.priority?'priority-pos':''}">
+        <div class="rec-pos-header" data-expand-pos="${pos.id}">
+          <div class="rec-pos-left">
+            <div class="rec-pos-title">${pos.title}</div>
+            <div class="rec-pos-meta">${pos.location} · ${pos.comp}</div>
+          </div>
+          <div class="rec-pos-badges">
+            <span class="rec-pos-badge active">● Active</span>
+            <span class="rec-pos-stat">${posCands.length} CVs</span>
+            <span class="rec-pos-stat green">${shortlisted} shortlisted</span>
+            <span class="rec-pos-stat indigo">${emailSent} emailed</span>
+            <span class="rec-chevron ${isExpanded?'open':''}">▾</span>
+          </div>
+        </div>
+        ${isExpanded ? `
+        <div class="rec-pos-body">
+          <div class="rec-pos-section-title">About</div>
+          <div class="rec-pos-text">${pos.about}</div>
+          <div class="rec-two-col" style="margin-top:14px">
+            <div>
+              <div class="rec-pos-section-title">Key Responsibilities</div>
+              <ul class="rec-list">${pos.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul>
+            </div>
+            <div>
+              <div class="rec-pos-section-title">Requirements</div>
+              <ul class="rec-list">${pos.requirements.map(r=>`<li>${r}</li>`).join('')}</ul>
+            </div>
+          </div>
+          <div class="rec-pos-footer">
+            <a href="${pos.driveUrl}" target="_blank" class="rec-drive-link">📁 Open in Google Drive →</a>
+            <button class="rec-view-cands-btn" data-viewcands="${pos.id}">View ${posCands.length} Candidates →</button>
+          </div>
+          <div class="rec-pos-section-title" style="margin-top:18px">Candidates for this role</div>
+          <div class="rec-mini-cand-list">
+            ${candidates.filter(c=>c.positionId===pos.id).map(c => {
+              const st = statusCfg(c.status);
+              return `<div class="rec-mini-cand">
+                <div class="rec-mini-avatar">${c.initials}</div>
+                <div class="rec-mini-info">
+                  <div class="rec-mini-name">${c.name}</div>
+                  <div class="rec-mini-role">${c.currentRole} · ${c.currentCompany}</div>
+                </div>
+                <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
+                ${c.emailSent?'<span class="email-sent-badge">✉ Sent</span>':'<span class="email-not-sent-badge">✉ Not sent</span>'}
+                <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">CV →</a>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderCandidatesTab(activePos) {
+  const posFilter = state.recPosition;
+  let list = posFilter ? candidates.filter(c=>c.positionId===posFilter) : candidates;
+
+  return `
+  <div class="rec-cands-layout">
+    <div class="rec-pos-sidebar">
+      <div class="rec-pos-sidebar-label">Filter by Position</div>
+      <button class="rec-pos-filter-btn ${!posFilter?'active':''}" data-posfilter="">All (${candidates.length})</button>
+      ${positions.map(p=>`
+        <button class="rec-pos-filter-btn ${posFilter===p.id?'active':''}" data-posfilter="${p.id}">
+          ${p.title} <span style="color:var(--text-3)">(${candidates.filter(c=>c.positionId===p.id).length})</span>
+        </button>`).join('')}
+    </div>
+    <div class="rec-cands-list">
+      ${list.map(c => {
+        const st = statusCfg(c.status);
+        const pos = positions.find(p=>p.id===c.positionId);
+        return `
+        <div class="rec-cand-card">
+          <div class="rec-cand-avatar">${c.initials}</div>
+          <div class="rec-cand-body">
+            <div class="rec-cand-top">
+              <div>
+                <div class="rec-cand-name">${c.name}</div>
+                <div class="rec-cand-role">${c.currentRole} · ${c.currentCompany}</div>
+                <div class="rec-cand-loc">📍 ${c.location} ${pos?`· <span class="rec-pos-tag">${pos.title}</span>`:''}
+                </div>
+              </div>
+              <div class="rec-cand-actions">
+                <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
+                <select class="cand-status-select" data-cand-status="${c.id}">
+                  ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="rec-cand-summary">${c.summary}</div>
+            ${c.tags.length?`<div class="rec-cand-tags">${c.tags.map(t=>`<span class="rec-tag">${t}</span>`).join('')}</div>`:''}
+            <div class="rec-cand-footer">
+              <label class="email-toggle">
+                <input type="checkbox" data-email-toggle="${c.id}" ${c.emailSent?'checked':''}>
+                <span>Email sent to candidate</span>
+              </label>
+              ${c.email?`<span class="rec-email">${c.email}</span>`:''}
+              <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>
+            </div>
+            ${c.notes?`<div class="rec-cand-notes-display">${c.notes}</div>`:''}
+            <textarea class="rec-notes-area" data-rec-notes="${c.id}" placeholder="Add notes about this candidate…">${c.notes||''}</textarea>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function renderTalentPoolTab() {
+  const byPos = {};
+  positions.forEach(p => { byPos[p.id] = candidates.filter(c=>c.positionId===p.id); });
+
+  return `
+  <div class="talent-pool">
+    <div class="talent-pool-header">
+      <div class="talent-pool-stats">
+        <div class="metric-card" style="display:inline-flex;flex-direction:column;margin-right:10px">
+          <div class="metric-label">Total CVs</div>
+          <div class="metric-value">${candidates.length}</div>
+        </div>
+        <div class="metric-card" style="display:inline-flex;flex-direction:column;margin-right:10px">
+          <div class="metric-label">Shortlisted</div>
+          <div class="metric-value green">${candidates.filter(c=>c.status==='shortlisted').length}</div>
+        </div>
+        <div class="metric-card" style="display:inline-flex;flex-direction:column">
+          <div class="metric-label">Emails Sent</div>
+          <div class="metric-value accent">${candidates.filter(c=>c.emailSent).length}</div>
+        </div>
+      </div>
+    </div>
+
+    ${positions.map(pos => {
+      const posCands = byPos[pos.id] || [];
+      if (!posCands.length) return '';
+      return `
+      <div class="talent-pool-section">
+        <div class="talent-pool-pos-header">
+          <span class="talent-pool-pos-title">${pos.title}</span>
+          <span class="talent-pool-pos-count">${posCands.length} candidates</span>
+          <span class="talent-pool-pos-short">${posCands.filter(c=>c.status==='shortlisted').length} shortlisted</span>
+        </div>
+        <table class="talent-pool-table">
+          <thead><tr>
+            <th>Name</th><th>Current Role</th><th>Location</th><th>Status</th><th>Email</th><th>CV</th>
+          </tr></thead>
+          <tbody>
+            ${posCands.map(c => {
+              const st = statusCfg(c.status);
+              return `<tr>
+                <td><div style="display:flex;align-items:center;gap:8px">
+                  <div class="rec-mini-avatar" style="width:28px;height:28px;font-size:9px">${c.initials}</div>
+                  <span style="font-weight:500;font-size:12px">${c.name}</span>
+                </div></td>
+                <td style="font-size:11px;color:var(--text-2)">${c.currentRole}</td>
+                <td style="font-size:11px;color:var(--text-3)">${c.location}</td>
+                <td><span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span></td>
+                <td>
+                  ${c.emailSent
+                    ? '<span style="font-size:10px;color:var(--green);font-family:DM Mono,monospace">✉ Sent</span>'
+                    : '<span style="font-size:10px;color:var(--text-3);font-family:DM Mono,monospace">Not sent</span>'}
+                </td>
+                <td><a href="${c.driveUrl}" target="_blank" class="rec-cv-link">View →</a></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }).join('')}
+  </div>`
+}
+
+function render() {
+  document.getElementById('app').innerHTML = `
+    ${renderSidebar()}
+    <main class="main" id="main-content">${renderView()}</main>
+    <div class="toast-container" id="toast-container"></div>`;
+  attachEvents();
+  if (state.modal) renderModal();
+}
+
+// ── Attach Events ─────────────────────────────────────────────────────
+function attachEvents() {
+  // Nav
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.addEventListener('click', () => { state.view=el.dataset.nav; state.expandedId=null; state.modal=null; render(); });
+  });
+  // Stage filter
+  document.querySelectorAll('[data-stage]').forEach(el => {
+    el.addEventListener('click', () => { state.stageFilter=parseInt(el.dataset.stage); state.expandedId=null; render(); });
+  });
+  // Sector filter
+  document.querySelectorAll('[data-sector]').forEach(el => {
+    el.addEventListener('click', () => { state.sectorFilter=el.dataset.sector; state.expandedId=null; render(); });
+  });
+  // Sort
+  const ss = document.querySelector('.sort-select');
+  if (ss) ss.addEventListener('change', e => { state.sort=e.target.value; render(); });
+
+  // Search bar
+  const searchInput = document.getElementById('pipeline-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      state.searchQuery = e.target.value;
+      state.expandedId = null;
+      refreshTbody();
+    });
+    searchInput.focus();
+    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+  }
+
+  // Funnel segment clicks
+  document.querySelectorAll('.funnel-seg').forEach(el => {
+    el.addEventListener('click', () => {
+      const s = parseInt(el.dataset.stage);
+      state.stageFilter = state.stageFilter === s ? -1 : s;
+      state.expandedId = null;
+      render();
+    });
+  });
+
+  // Find Leads button
+  const flBtn = document.getElementById('btn-find-leads');
+  if (flBtn) flBtn.addEventListener('click', async () => {
+    state.modal='findLeads';
+    state.findLeadsResults=[];
+    state.findLeadsError=null;
+    const bs = await checkBackend();
+    state.backendStatus = bs;
+    render();
+  });
+
+  // Row expand — delegate on tbody
+  const tbody = document.getElementById('prospect-tbody');
+  if (tbody) tbody.addEventListener('click', e => {
+    const emailBtn = e.target.closest('[data-email]');
+    if (emailBtn) {
+      const id = emailBtn.dataset.email;
+      const pid = isNaN(id) ? id : parseInt(id);
+      state.modal = 'email';
+      state.modalData = pid;
+      renderModal();
+      return;
+    }
+    const expandEmailBtn = e.target.closest('.expand-email-btn');
+    if (expandEmailBtn) {
+      const pid = expandEmailBtn.dataset.email;
+      const id = isNaN(pid) ? pid : parseInt(pid);
+      state.modal = 'email';
+      state.modalData = id;
+      renderModal();
+      return;
+    }
+    if (e.target.closest('button,textarea,select,a')) return;
+    const row = e.target.closest('.prospect-row');
+    if (!row) return;
+    const rawId = row.dataset.id;
+    const id = isNaN(rawId) ? rawId : parseInt(rawId);
+    state.expandedId = state.expandedId===id ? null : id;
+    refreshTbody();
+  });
+
+  attachExpandedEvents();
+
+  // Recruiting tabs
+  document.querySelectorAll('[data-rectab]').forEach(el => {
+    el.addEventListener('click', () => { state.recTab=el.dataset.rectab; render(); });
+  });
+  // Position expand
+  document.querySelectorAll('[data-expand-pos]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.expandPos;
+      state.recExpandedCandidate = state.recExpandedCandidate===id ? null : id;
+      render();
+    });
+  });
+  // View candidates button
+  document.querySelectorAll('[data-viewcands]').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); state.recTab='candidates'; state.recPosition=el.dataset.viewcands; render(); });
+  });
+  // Position filter in candidates tab
+  document.querySelectorAll('[data-posfilter]').forEach(el => {
+    el.addEventListener('click', () => { state.recPosition=el.dataset.posfilter||null; render(); });
+  });
+  // Candidate status select
+  document.querySelectorAll('[data-cand-status]').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const c = candidates.find(x=>x.id===sel.dataset.candStatus);
+      if (c) { c.status=e.target.value; persistCandidate(c); showToast(`${c.name} → ${e.target.value}`); render(); }
+    });
+  });
+  // Email sent toggle
+  document.querySelectorAll('[data-email-toggle]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const c = candidates.find(x=>x.id===cb.dataset.emailToggle);
+      if (c) { c.emailSent=cb.checked; persistCandidate(c); showToast(cb.checked?`✉ Email marked sent — ${c.name}`:`Email unmarked — ${c.name}`); }
+    });
+  });
+  // Candidate notes
+  document.querySelectorAll('[data-rec-notes]').forEach(ta => {
+    ta.addEventListener('input', () => {
+      const c = candidates.find(x=>x.id===ta.dataset.recNotes);
+      if (c) { c.notes=ta.value; persistCandidate(c); }
+    });
+  });
+
+  // Social Media controls
+  document.querySelectorAll('[data-platform]').forEach(el => {
+    el.addEventListener('click', () => { state.socialPlatform=el.dataset.platform; render(); });
+  });
+  document.querySelectorAll('[data-posttype]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.socialPostType=el.dataset.posttype;
+      const defaultAngles = {casestudy:'sound',insight:'pe',hottake:'cio',question:'dso'};
+      state.socialAngle = defaultAngles[state.socialPostType]||'sound';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-angle]').forEach(el => {
+    el.addEventListener('click', () => { state.socialAngle=el.dataset.angle; render(); });
+  });
+
+  attachExpandedEvents();
+  attachCopyButtons();
+}
+
+function attachExpandedEvents() {
+  // Notes
+  document.querySelectorAll('.notes-area').forEach(ta => {
+    ta.addEventListener('input', () => {
+      const rawId = ta.dataset.id;
+      const id = isNaN(rawId) ? rawId : parseInt(rawId);
+      const p = prospects.find(x=>x.id===id);
+      if (p) { p.notes=ta.value; persistProspect(p); }
+    });
+  });
+  // Toggles
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => handleToggle(btn));
+  });
+  // Stage nav
+  document.querySelectorAll('[data-stage-move]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rawId = btn.dataset.id;
+      const id = isNaN(rawId) ? rawId : parseInt(rawId);
+      const p = prospects.find(x=>x.id===id);
+      if (!p) return;
+      const newStage = Math.max(0, Math.min(STAGES.length-1, p.stage + parseInt(btn.dataset.stageMove)));
+      if (newStage!==p.stage) { p.stage=newStage; persistProspect(p); showToast(`${p.name} → ${STAGES[newStage]}`); refreshTbody(); }
+    });
+  });
+  attachCopyButtons();
+}
+
+function handleToggle(btn) {
+  const rawId = btn.dataset.id;
+  const id = isNaN(rawId) ? rawId : parseInt(rawId);
+  const p = prospects.find(x=>x.id===id);
+  if (!p) return;
+  const type = btn.dataset.toggle;
+  if (type==='research') { p.researchDone=!p.researchDone; showToast(p.researchDone?`Research done ✓ — ${p.name}`:`Research unmarked — ${p.name}`); }
+  else if (type==='outreach') { p.outreachWritten=!p.outreachWritten; showToast(p.outreachWritten?`Outreach written ✓ — ${p.name}`:`Outreach unmarked — ${p.name}`); }
+  else if (type==='spoken') {
+    p.spokenTo=!p.spokenTo;
+    if (p.spokenTo) {
+      const ts = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      p.notes = (p.notes?p.notes+'\n':'') + `📞 Spoken to on ${ts}`;
+      if (p.stage < 3) { p.stage=3; showToast(`${p.name} → Replied + Spoken To ✓`); }
+      else showToast(`📞 Marked spoken to — ${p.name}`);
+    } else showToast(`Spoken to removed — ${p.name}`);
+  }
+  else if (type==='meeting') {
+    if (!p.meetingBooked) {
+      const date = prompt('Meeting date (e.g. Jun 5, 2026):', new Date(Date.now()+7*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}));
+      if (date===null) return;
+      p.meetingBooked=true; p.meetingDate=date;
+      const ts = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      p.notes = (p.notes?p.notes+'\n':'') + `📅 Meeting booked for ${date} (logged ${ts})`;
+      if (p.stage < 4) p.stage=4;
+      showToast(`📅 Meeting booked for ${date} — ${p.name}`);
+    } else {
+      p.meetingBooked=false; p.meetingDate=null;
+      showToast(`Meeting removed — ${p.name}`);
+    }
+  }
+  persistProspect(p);
+  refreshTbody();
+  // Update modal toggle if open
+  const modalToggle = document.getElementById('modal-outreach-toggle');
+  if (modalToggle && type==='outreach') {
+    modalToggle.className = `toggle-btn ${p.outreachWritten?'on':''}`;
+    modalToggle.textContent = p.outreachWritten ? '✓ Outreach marked written' : '○ Mark outreach written';
+  }
+}
+
+function attachCopyButtons() {
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.onclick = () => {
+      const text = (btn.dataset.copy||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+      const label = btn.dataset.label || 'Text';
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = `✓ Copied!`;
+        btn.classList.add('copied');
+        setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); },2000);
+        showToast(`${label} copied to clipboard`, 'success');
+      }).catch(()=>{ showToast('Copy failed — try manually selecting text','error'); });
+    };
+  });
+}
+
+function attachModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+
+  // Close button
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  // Click outside
+  overlay.addEventListener('click', e => { if (e.target===overlay) closeModal(); });
+  // Escape key
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key==='Escape') { closeModal(); document.removeEventListener('keydown',esc); }
+  });
+
+  // Find Leads: sector/location filter chips
+  document.querySelectorAll('[data-fl-sector]').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('active'));
+  });
+  document.querySelectorAll('[data-fl-loc]').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('active'));
+  });
+
+  // Search button
+  document.getElementById('fl-search-btn')?.addEventListener('click', async () => {
+    const activeSectors = [...document.querySelectorAll('[data-fl-sector].active')].map(el=>el.dataset.flSector);
+    const activeLocs = [...document.querySelectorAll('[data-fl-loc].active')].map(el=>el.dataset.flLoc);
+    const sectorKeywords = activeSectors.flatMap(s => ({
+      'PE/VC':['private equity','venture capital','growth equity'],
+      'Healthcare':['healthcare','hospital','health system','medical'],
+      'Dental':['dental','dentistry','oral health','DSO'],
+    }[s]||[]));
+    await searchApolloLeads({ sectors: sectorKeywords.length?sectorKeywords:undefined, locations:activeLocs.length?activeLocs:undefined });
+  });
+
+  // Add lead buttons
+  document.querySelectorAll('[data-fl-add-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.flAddIdx);
+      const p = state.findLeadsResults[idx];
+      if (!p) return;
+      const alreadyIn = prospects.some(x=>x.id===p.id||(x.name===p.name&&x.company===p.company));
+      if (alreadyIn) { showToast('Already in pipeline'); return; }
+      prospects.push(p);
+      addedFromSearch.push(p);
+      persistAdded(p);
+      showToast(`${p.name} added to pipeline ✓`, 'success');
+      renderModal(); // refresh modal to show "In pipeline"
+      // Also refresh main table if visible
+      const tbody = document.getElementById('prospect-tbody');
+      if (tbody) { tbody.innerHTML = filteredSorted().map(x=>renderProspectRows(x)).join(''); attachExpandedEvents(); }
+    });
+  });
+
+  attachCopyButtons();
+
+  // Toggle in email modal
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => handleToggle(btn));
+  });
+}
+
+function closeModal() {
+  state.modal = null;
+  state.modalData = null;
+  const el = document.getElementById('modal-overlay');
+  if (el) el.remove();
+}
+
+function refreshTbody() {
+  const tbody = document.getElementById('prospect-tbody');
+  if (tbody) {
+    tbody.innerHTML = filteredSorted().map(p=>renderProspectRows(p)).join('');
+    attachExpandedEvents();
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+async function boot() {
+  // Show loading state
+  document.getElementById('app').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0f;color:#9090a8;font-family:'DM Mono',monospace;font-size:12px;flex-direction:column;gap:12px">
+      <div style="width:24px;height:24px;border:2px solid rgba(99,102,241,0.3);border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></div>
+      ${DB_ENABLED ? 'Connecting to database…' : 'Loading…'}
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+
+  if (DB_ENABLED) {
+    try {
+      const dbState = await loadDbState();
+
+      // Merge Supabase prospect state
+      Object.entries(dbState.prospects).forEach(([id, row]) => {
+        const p = prospects.find(x => String(x.id) === id);
+        if (p) {
+          p.stage           = row.stage           ?? p.stage;
+          p.notes           = row.notes           ?? p.notes;
+          p.researchDone    = row.research_done    ?? p.researchDone;
+          p.outreachWritten = row.outreach_written ?? p.outreachWritten;
+          p.spokenTo        = row.spoken_to        ?? p.spokenTo;
+          p.meetingBooked   = row.meeting_booked   ?? p.meetingBooked;
+          p.meetingDate     = row.meeting_date     ?? p.meetingDate;
+        }
+      });
+
+      // Merge Supabase candidate state
+      Object.entries(dbState.candidates).forEach(([id, row]) => {
+        const c = candidates.find(x => String(x.id) === id);
+        if (c) {
+          c.status    = row.status     ?? c.status;
+          c.emailSent = row.email_sent ?? c.emailSent;
+          c.notes     = row.notes      ?? c.notes;
+        }
+      });
+
+      // Load added prospects from Supabase
+      dbState.added.forEach(p => {
+        if (!prospects.find(x => String(x.id) === String(p.id))) {
+          prospects.push(p);
+          addedFromSearch.push(p);
+        }
+      });
+
+      state.dbStatus = 'connected';
+    } catch (e) {
+      console.warn('DB load failed', e);
+      state.dbStatus = 'error';
+    }
+  } else {
+    state.dbStatus = 'not-configured';
+  }
+
+  render();
+  checkBackend().then(bs => { state.backendStatus = bs; });
+}
+
+boot();
