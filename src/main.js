@@ -102,6 +102,7 @@ const state = {
   chatUnsub: null,
   // Team
   team: [],
+  editMemberData: null,
   // Articles
   articles: [],
   articleModal: null,
@@ -385,22 +386,40 @@ function getPostContent() {
 }
 
 // ── Team View ────────────────────────────────────────────────────────
+const CEO_CODE = '123456';
+let ceoUnlocked = false;
+
 function renderTeam() {
   const active = state.team.filter(m => m.status !== 'offline');
   return `
-  <div class="page-header">
-    <div class="page-title">Team</div>
-    <div class="page-sub">${state.team.length} members · ${active.length} active</div>
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Team</div>
+      <div class="page-sub">${state.team.length} members · ${active.length} active</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      ${ceoUnlocked ? `
+        <button class="find-leads-btn" id="btn-add-member">+ Add Member</button>
+        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
+      ` : `
+        <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
+      `}
+    </div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
     ${state.team.map(m => {
       const statusColor = m.status==='active' ? 'var(--green)' : m.status==='away' ? 'var(--amber)' : 'var(--text-3)';
       return `
-      <div class="rec-cand-card" style="flex-direction:column;gap:0">
+      <div class="rec-cand-card" style="flex-direction:column;gap:0;position:relative">
+        ${ceoUnlocked ? `
+          <div style="position:absolute;top:12px;right:12px;display:flex;gap:4px">
+            <button class="team-edit-btn" data-edit-member="${m.id}" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Edit">✎</button>
+            <button class="team-delete-btn" data-delete-member="${m.id}" data-member-name="${escHtml(m.full_name||m.email)}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,0.2);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Remove">✕</button>
+          </div>` : ''}
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0;position:relative">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0;position:relative">
             ${(m.full_name||m.email||'?')[0].toUpperCase()}
-            <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card)"></div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card-flat)"></div>
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:15px;font-weight:600;color:var(--text)">${m.full_name||'Unnamed'}</div>
@@ -408,13 +427,82 @@ function renderTeam() {
           </div>
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${m.email}</div>
-        ${m.department ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-bottom:6px">Dept: ${m.department}</div>` : ''}
+        ${m.department ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
         ${m.bio ? `<div style="font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px">${m.bio}</div>` : ''}
-        ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
-        ${m.phone ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:8px">📞 ${m.phone}</div>` : ''}
+        ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
+        ${m.phone ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
       </div>`;
     }).join('')}
     ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
+  </div>`;
+}
+
+function renderAddMemberModal() {
+  const m = state.editMemberData || {};
+  const isEdit = !!m.id;
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Team Member' : 'Add Team Member'}</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="member-form" style="padding:20px 28px 24px">
+        ${!isEdit ? `
+        <div style="padding:12px 14px;background:var(--amber-glow);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace;margin-bottom:16px;line-height:1.6">
+          ⚠ New members must sign up at the login page first. This form updates their profile details (designation, department, etc). Enter the email they signed up with.
+        </div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <input type="text" name="full_name" value="${escHtml(m.full_name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation</label>
+            <input type="text" name="designation" value="${escHtml(m.designation||'')}" placeholder="e.g. CTO, Designer, Sales Lead" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Department</label>
+            <input type="text" name="department" value="${escHtml(m.department||'')}" placeholder="e.g. Engineering, Sales" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <input type="text" name="phone" value="${escHtml(m.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Role</label>
+            <select name="role" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+              <option value="member" ${m.role==='member'||!m.role?'selected':''}>Member</option>
+              <option value="admin" ${m.role==='admin'?'selected':''}>Admin</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
+            <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+              <option value="active" ${m.status==='active'||!m.status?'selected':''}>Active</option>
+              <option value="away" ${m.status==='away'?'selected':''}>Away</option>
+              <option value="offline" ${m.status==='offline'?'selected':''}>Offline</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
+          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Inter,sans-serif">${escHtml(m.bio||'')}</textarea>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
+          <input type="text" name="skills" value="${(m.skills||[]).join(', ')}" placeholder="e.g. React, Sales, AI, Design" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Update Member'}</button>
+        </div>
+      </form>
+    </div>
   </div>`;
 }
 
@@ -2094,6 +2182,7 @@ function attachEvents() {
   attachCopyButtons();
   attachLeadEvents();
   attachProjectEvents();
+  attachTeamEvents();
   attachArticleEvents();
   attachSocialPlannerEvents();
   attachAnalyticsEvents();
@@ -2500,6 +2589,96 @@ async function loadProjectTabData() {
     });
   }
   if (state.projectTab === 'checkins') state.projectCheckins = await fetchCheckins(pid);
+}
+
+// ── Team Events ─────────────────────────────────────────────────────
+function attachTeamEvents() {
+  document.getElementById('btn-unlock-team')?.addEventListener('click', () => {
+    const code = prompt('🔒 Enter CEO code to unlock team management:');
+    if (code === CEO_CODE) {
+      ceoUnlocked = true;
+      showToast('🔓 Team management unlocked', 'success');
+      render();
+    } else if (code !== null) {
+      showToast('❌ Incorrect code', 'error');
+    }
+  });
+  document.getElementById('btn-lock-team')?.addEventListener('click', () => {
+    ceoUnlocked = false;
+    showToast('🔒 Team management locked', 'info');
+    render();
+  });
+  document.getElementById('btn-add-member')?.addEventListener('click', () => {
+    state.editMemberData = {};
+    renderTeamModal();
+  });
+  document.querySelectorAll('[data-edit-member]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = state.team.find(x => x.id === btn.dataset.editMember);
+      if (m) { state.editMemberData = { ...m }; renderTeamModal(); }
+    });
+  });
+  document.querySelectorAll('[data-delete-member]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.memberName;
+      if (!confirm(`Remove ${name} from the team?\n\nThis will delete their profile. They will need to sign up again.`)) return;
+      try {
+        await supabase.from('profiles').delete().eq('id', btn.dataset.deleteMember);
+        state.team = await fetchTeam();
+        showToast(`${name} removed from team`, 'success');
+        render();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    });
+  });
+}
+
+function renderTeamModal() {
+  const existing = document.getElementById('modal-overlay');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.innerHTML = renderAddMemberModal();
+  document.body.appendChild(el.firstElementChild);
+  attachTeamModalEvents();
+}
+
+function attachTeamModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const closeModal = () => { state.editMemberData = null; overlay.remove(); };
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.getElementById('member-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const skillsRaw = fd.get('skills') || '';
+    const skills = skillsRaw.split(',').map(s => s.trim()).filter(Boolean);
+    const updates = {
+      full_name: fd.get('full_name'),
+      designation: fd.get('designation'),
+      department: fd.get('department'),
+      phone: fd.get('phone'),
+      role: fd.get('role'),
+      status: fd.get('status'),
+      bio: fd.get('bio'),
+      skills,
+    };
+    try {
+      if (state.editMemberData?.id) {
+        await updateProfile(state.editMemberData.id, updates);
+        showToast('Member updated ✓', 'success');
+      } else {
+        showToast('Tell the new member to sign up first, then edit their profile here', 'info');
+      }
+      state.team = await fetchTeam();
+      closeModal();
+      render();
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    }
+  });
 }
 
 // ── Article Events ───────────────────────────────────────────────────
