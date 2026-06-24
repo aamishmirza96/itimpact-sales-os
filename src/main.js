@@ -474,11 +474,8 @@ function renderAddMemberModal() {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Role</label>
-            <select name="role" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
-              <option value="member" ${m.role==='member'||!m.role?'selected':''}>Member</option>
-              <option value="admin" ${m.role==='admin'?'selected':''}>Admin</option>
-            </select>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation / Role</label>
+            <input type="text" name="designation_role" value="${escHtml(m.designation || m.role || '')}" placeholder="e.g. CEO, CTO, Lead Designer, Sales Head" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
             <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
@@ -692,51 +689,76 @@ function renderAnalyticsView() {
   const d = state.analyticsData;
   if (!d) return '<div style="text-align:center;padding:60px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading analytics...</div>';
   const maxDaily = Math.max(...(d.dailyData||[]).map(x=>x[1]),1);
+  const avgPages = d.totalSessions?.length ? (d.totalSessions.reduce((s,x) => s + (x.pages_viewed||0), 0) / d.totalSessions.length).toFixed(1) : '0';
+  const devices = {};
+  (d.totalSessions||[]).forEach(s => { const dev = s.device || 'unknown'; devices[dev] = (devices[dev]||0)+1; });
   return `
   <div class="page-header pipe-header">
     <div>
       <div class="page-title">Website Analytics</div>
-      <div class="page-sub">Last ${state.analyticsDays} days · tracking your Replit site</div>
+      <div class="page-sub">itimpactconsulting.us · real-time tracking</div>
     </div>
-    <div style="display:flex;gap:6px">
-      ${[7,14,30].map(n => `<button class="stage-chip ${state.analyticsDays===n?'active':''}" data-analytics-days="${n}">${n}d</button>`).join('')}
+    <div style="display:flex;gap:6px;align-items:center">
+      ${[7,14,30,90].map(n => `<button class="stage-chip ${state.analyticsDays===n?'active':''}" data-analytics-days="${n}">${n}d</button>`).join('')}
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+        <input type="date" id="analytics-from" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:'DM Mono',monospace;outline:none" />
+        <span style="color:var(--text-3);font-size:11px">to</span>
+        <input type="date" id="analytics-to" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:'DM Mono',monospace;outline:none" />
+        <button id="btn-analytics-custom" style="padding:6px 12px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">Go</button>
+      </div>
     </div>
-  </div>
-  <div class="metrics-row" style="grid-template-columns:repeat(4,1fr)">
-    <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-value">${d.sessions}</div></div>
-    <div class="metric-card"><div class="metric-label">Page Views</div><div class="metric-value accent">${d.pageViews}</div></div>
-    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value green">${d.clicks}</div></div>
-    <div class="metric-card"><div class="metric-label">Avg Session Time</div><div class="metric-value">${d.avgTime}s</div></div>
   </div>
 
-  ${d.dailyData?.length ? `
-  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:20px">
-    <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:16px">Daily Page Views</div>
-    <div style="display:flex;align-items:flex-end;gap:6px;height:120px">
-      ${d.dailyData.map(([day, count]) => `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent-2)">${count}</div>
-          <div style="width:100%;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:4px 4px 0 0;height:${Math.max(count/maxDaily*100,4)}px;transition:height 0.3s"></div>
-          <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
-        </div>`).join('')}
+  <div class="metrics-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-value">${d.sessions}</div><div class="metric-sub">unique visitors</div></div>
+    <div class="metric-card"><div class="metric-label">Page Views</div><div class="metric-value accent">${d.pageViews}</div><div class="metric-sub">${avgPages} pages/session</div></div>
+    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value green">${d.clicks}</div><div class="metric-sub">tracked interactions</div></div>
+    <div class="metric-card"><div class="metric-label">Avg Time</div><div class="metric-value">${d.avgTime >= 60 ? Math.floor(d.avgTime/60)+'m '+d.avgTime%60+'s' : d.avgTime+'s'}</div><div class="metric-sub">per session</div></div>
+    <div class="metric-card"><div class="metric-label">Devices</div><div class="metric-value">${devices.desktop||0}<span style="font-size:14px;color:var(--text-3)"> / </span>${devices.mobile||0}</div><div class="metric-sub">desktop / mobile</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px">
+    <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
+      ${d.dailyData?.length ? `
+      <div style="display:flex;align-items:flex-end;gap:4px;height:140px">
+        ${d.dailyData.map(([day, count]) => `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent-2);font-weight:600">${count}</div>
+            <div style="width:100%;background:var(--gradient-accent);border-radius:6px 6px 0 0;height:${Math.max(count/maxDaily*100,6)}px;transition:height 0.5s;box-shadow:0 0 8px rgba(139,92,246,0.2)"></div>
+            <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
+          </div>`).join('')}
+      </div>` : '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">No page view data yet</div>'}
     </div>
-  </div>` : ''}
+    <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
+      ${d.topPages.length ? d.topPages.map((p,i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
+          <span style="flex:1;font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2);font-weight:600">${p.count}</span>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No page data yet</div>'}
+    </div>
+  </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:14px">Top Pages</div>
-      ${d.topPages.length ? d.topPages.map((p,i) => `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);width:20px">${i+1}.</span>
-          <span style="flex:1;font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2)">${p.count}</span>
-        </div>`).join('') : '<div style="font-size:12px;color:var(--text-3)">No data yet</div>'}
+    <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
+      ${(d.events||[]).filter(e=>e.event_type==='click').slice(0,8).map(e => `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
+          <span style="flex:1;font-size:11px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.element_text||'(no text)'}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3)">${e.page_url||'/'}</span>
+        </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No clicks recorded yet</div>'}
     </div>
-    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:14px">Tracking Setup</div>
-      <div style="font-size:12px;color:var(--text-2);line-height:1.7;margin-bottom:12px">Add this script to your Replit website's HTML to start tracking:</div>
-      <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2);word-break:break-all;line-height:1.6">&lt;script src="https://itimpact.netlify.app/tracker.js"&gt;&lt;/script&gt;</div>
-      <div style="font-size:11px;color:var(--text-3);margin-top:8px">Paste this before &lt;/body&gt; in your site.</div>
+    <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
+      ${(d.totalSessions||[]).slice(0,8).map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
+          <span style="font-size:12px">${s.device==='mobile'?'📱':'💻'}</span>
+          <span style="flex:1;font-size:11px;color:var(--text-2)">${s.pages_viewed||1} pages · ${s.total_time||0}s</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3)">${new Date(s.started_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No sessions yet</div>'}
     </div>
   </div>`;
 }
@@ -2655,12 +2677,13 @@ function attachTeamModalEvents() {
     const fd = new FormData(e.target);
     const skillsRaw = fd.get('skills') || '';
     const skills = skillsRaw.split(',').map(s => s.trim()).filter(Boolean);
+    const desigRole = fd.get('designation_role') || '';
     const updates = {
       full_name: fd.get('full_name'),
-      designation: fd.get('designation'),
+      designation: desigRole || fd.get('designation') || '',
       department: fd.get('department'),
       phone: fd.get('phone'),
-      role: fd.get('role'),
+      role: desigRole.toLowerCase().includes('ceo') || desigRole.toLowerCase().includes('admin') ? 'admin' : 'member',
       status: fd.get('status'),
       bio: fd.get('bio'),
       skills,
@@ -2788,6 +2811,17 @@ function attachAnalyticsEvents() {
       state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
       render();
     });
+  });
+  document.getElementById('btn-analytics-custom')?.addEventListener('click', async () => {
+    const from = document.getElementById('analytics-from')?.value;
+    const to = document.getElementById('analytics-to')?.value;
+    if (!from || !to) { showToast('Select both dates', 'error'); return; }
+    const days = Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1;
+    if (days < 1) { showToast('Invalid date range', 'error'); return; }
+    state.analyticsDays = days;
+    state.analyticsData = await fetchAnalyticsOverview(days);
+    showToast(`Showing ${days} days of data`, 'success');
+    render();
   });
 }
 
