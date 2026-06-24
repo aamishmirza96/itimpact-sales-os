@@ -63,6 +63,7 @@ function persistCandidate(c) {
 
 const state = {
   authenticated: false,
+  darkMode: localStorage.getItem('theme') === 'dark',
   authView: 'login',
   authError: null,
   authLoading: false,
@@ -1223,8 +1224,9 @@ function renderSidebar() {
       <div class="logo">IT<span>Impact</span></div>
       <div class="sub">CRM & Projects</div>
     </div>
-    <div style="padding:4px 16px 8px;display:flex;justify-content:flex-end">
-      <button id="btn-notif-toggle" style="position:relative;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--text-2);font-size:14px;transition:all 0.15s">
+    <div style="padding:4px 16px 8px;display:flex;justify-content:flex-end;gap:6px;align-items:center">
+      <button id="btn-theme-toggle" class="theme-toggle">${state.darkMode?'☀️ Light':'🌙 Dark'}</button>
+      <button id="btn-notif-toggle" style="position:relative;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--text-2);font-size:14px;transition:all 0.15s">
         🔔${state.unreadCount > 0 ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center">${state.unreadCount}</span>` : ''}
       </button>
     </div>
@@ -2209,6 +2211,14 @@ function attachEvents() {
   attachSocialPlannerEvents();
   attachAnalyticsEvents();
 
+  // Theme toggle
+  document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
+    state.darkMode = !state.darkMode;
+    document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : '');
+    localStorage.setItem('theme', state.darkMode ? 'dark' : 'light');
+    render();
+  });
+
   // Notification bell toggle
   document.getElementById('btn-notif-toggle')?.addEventListener('click', async () => {
     state.showNotifPanel = !state.showNotifPanel;
@@ -2855,6 +2865,9 @@ function scrollChatToBottom() {
 
 // ── Boot ──────────────────────────────────────────────────────────────
 async function boot() {
+  // Apply saved theme
+  if (state.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
+
   // Show loading state
   document.getElementById('app').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080d;color:#9494b0;font-family:'DM Mono',monospace;font-size:12px;flex-direction:column;gap:12px">
