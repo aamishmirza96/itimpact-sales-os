@@ -5,6 +5,16 @@ import {
 } from './data.js';
 import { positions, candidates as rawCandidates, CANDIDATE_STATUSES } from './recruiting.js';
 import { supabase, DB_ENABLED, loadDbState, syncProspect, syncCandidate, syncAddedProspect } from './supabase.js';
+import { initAuth, currentUser, currentProfile, signIn, signUp, signOut, getTeamMembers } from './auth.js';
+import { LEAD_STATUSES, fetchLeads, createLead, updateLead, deleteLead } from './leads.js';
+import {
+  fetchProjects, createProject, fetchProjectMembers, addProjectMember,
+  fetchMessages, createMessage, fetchComments, createComment,
+  fetchTodoLists, createTodoList, createTodo, toggleTodo, deleteTodo,
+  fetchEvents, createEvent,
+  fetchChatMessages, sendChatMessage, subscribeToChatMessages,
+  fetchCheckins, createCheckin, respondToCheckin,
+} from './projects.js';
 
 // ── Persist & State ──────────────────────────────────────────────────
 const LS_KEY = 'sales_os_v2';
@@ -47,6 +57,10 @@ function persistCandidate(c) {
 }
 
 const state = {
+  authenticated: false,
+  authView: 'login',
+  authError: null,
+  authLoading: false,
   view: 'pipeline',
   stageFilter: -1,
   sectorFilter: 'All',
@@ -62,6 +76,25 @@ const state = {
   socialPostType: 'casestudy',
   socialAngle: 'sound',
   searchQuery: '',
+  // Leads
+  leads: [],
+  leadsLoading: false,
+  leadFilter: 'all',
+  leadModal: null,
+  leadEditData: null,
+  // Projects
+  projects: [],
+  projectsLoading: false,
+  activeProject: null,
+  projectTab: 'board',
+  projectMessages: [],
+  projectTodoLists: [],
+  projectEvents: [],
+  projectChat: [],
+  projectCheckins: [],
+  projectMembers: [],
+  teamMembers: [],
+  chatUnsub: null,
   generatedPost: null,
   recTab: 'positions',
   recPosition: null,
@@ -327,6 +360,391 @@ function getPostContent() {
   } catch { return null; }
 }
 
+// ── Auth Screen ──────────────────────────────────────────────────────
+function renderAuthScreen() {
+  const isLogin = state.authView === 'login';
+  return `
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg);padding:20px">
+    <div style="width:100%;max-width:400px">
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
+      </div>
+      <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:28px 32px">
+        <div style="display:flex;gap:0;margin-bottom:24px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+          <button class="auth-tab ${isLogin?'active':''}" data-authview="login" style="flex:1;padding:10px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;background:${isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign In</button>
+          <button class="auth-tab ${!isLogin?'active':''}" data-authview="signup" style="flex:1;padding:10px;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;background:${!isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${!isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign Up</button>
+        </div>
+        ${state.authError ? `<div style="padding:10px 12px;background:var(--red-glow);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:12px;color:var(--red);font-family:'DM Mono',monospace;margin-bottom:16px">${state.authError}</div>` : ''}
+        <form id="auth-form">
+          ${!isLogin ? `
+          <div style="margin-bottom:14px">
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="Amish Mirza" />
+          </div>` : ''}
+          <div style="margin-bottom:14px">
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="you@itimpact.com" />
+          </div>
+          <div style="margin-bottom:20px">
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
+            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="••••••••" />
+          </div>
+          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
+            ${state.authLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Leads View ───────────────────────────────────────────────────────
+function renderLeads() {
+  const statusCounts = {};
+  LEAD_STATUSES.forEach(s => { statusCounts[s.id] = state.leads.filter(l => l.status === s.id).length; });
+  const filtered = state.leadFilter === 'all' ? state.leads : state.leads.filter(l => l.status === state.leadFilter);
+  const totalValue = state.leads.reduce((s, l) => s + (l.value || 0), 0);
+
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Leads</div>
+      <div class="page-sub">${state.leads.length} leads · $${totalValue.toLocaleString()} total value</div>
+    </div>
+    <button class="find-leads-btn" id="btn-new-lead">+ New Lead</button>
+  </div>
+
+  <div class="metrics-row" style="grid-template-columns:repeat(${LEAD_STATUSES.length},1fr)">
+    ${LEAD_STATUSES.map(s => `
+      <div class="metric-card" style="cursor:pointer;${state.leadFilter===s.id?'border-color:'+s.color:''}" data-lead-filter="${s.id}">
+        <div class="metric-label">${s.label}</div>
+        <div class="metric-value" style="color:${s.color}">${statusCounts[s.id]||0}</div>
+      </div>`).join('')}
+  </div>
+
+  <div class="stage-bar" style="margin-bottom:20px">
+    <div class="stage-chip ${state.leadFilter==='all'?'active':''}" data-lead-filter="all">All (${state.leads.length})</div>
+    ${LEAD_STATUSES.map(s=>`<div class="stage-chip ${state.leadFilter===s.id?'active':''}" data-lead-filter="${s.id}">${s.label} (${statusCounts[s.id]||0})</div>`).join('')}
+  </div>
+
+  ${state.leadsLoading ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading leads...</div>' : ''}
+
+  <div class="rec-cands-list">
+    ${filtered.length === 0 && !state.leadsLoading ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No leads yet. Click "+ New Lead" to add one.</div>' : ''}
+    ${filtered.map(l => {
+      const st = LEAD_STATUSES.find(s=>s.id===l.status) || LEAD_STATUSES[0];
+      return `
+      <div class="rec-cand-card" style="cursor:pointer" data-edit-lead="${l.id}">
+        <div class="rec-cand-avatar" style="background:linear-gradient(135deg,${st.color},${st.color}cc)">${(l.name||'?')[0].toUpperCase()}</div>
+        <div class="rec-cand-body">
+          <div class="rec-cand-top">
+            <div>
+              <div class="rec-cand-name">${l.name}</div>
+              <div class="rec-cand-role">${l.company||'No company'}${l.email?' · '+l.email:''}</div>
+              ${l.value ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-top:2px">$${l.value.toLocaleString()}</div>` : ''}
+            </div>
+            <div class="rec-cand-actions">
+              <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
+              <select class="cand-status-select" data-lead-status="${l.id}" onclick="event.stopPropagation()">
+                ${LEAD_STATUSES.map(s=>`<option value="${s.id}" ${l.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          ${l.notes ? `<div class="rec-cand-summary">${l.notes}</div>` : ''}
+          <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:4px">
+            ${l.source||'manual'} · ${new Date(l.created_at).toLocaleDateString()}
+            ${l.assigned?.full_name ? ' · → '+l.assigned.full_name : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderLeadModal() {
+  const isEdit = !!state.leadEditData?.id;
+  const l = state.leadEditData || {};
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Lead' : 'New Lead'}</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="lead-form" style="padding:20px 28px 24px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Name *</label>
+            <input type="text" name="name" required value="${escHtml(l.name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Company</label>
+            <input type="text" name="company" value="${escHtml(l.company||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <input type="email" name="email" value="${escHtml(l.email||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <input type="text" name="phone" value="${escHtml(l.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Value ($)</label>
+            <input type="number" name="value" value="${l.value||0}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Source</label>
+            <input type="text" name="source" value="${escHtml(l.source||'manual')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
+          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Inter,sans-serif">${escHtml(l.notes||'')}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Projects View ────────────────────────────────────────────────────
+function renderProjects() {
+  if (state.activeProject) return renderProjectDetail();
+
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Projects</div>
+      <div class="page-sub">${state.projects.length} projects</div>
+    </div>
+    <button class="find-leads-btn" id="btn-new-project">+ New Project</button>
+  </div>
+
+  ${state.projectsLoading ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading projects...</div>' : ''}
+
+  <div class="rec-positions-grid">
+    ${state.projects.length === 0 && !state.projectsLoading ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No projects yet. Click "+ New Project" to create one.</div>' : ''}
+    ${state.projects.map(p => `
+      <div class="rec-pos-card" style="cursor:pointer" data-open-project="${p.id}">
+        <div class="rec-pos-header">
+          <div class="rec-pos-left">
+            <div class="rec-pos-title">${p.name}</div>
+            <div class="rec-pos-meta">${p.description||'No description'} · Created ${new Date(p.created_at).toLocaleDateString()}</div>
+          </div>
+          <div class="rec-pos-badges">
+            <span class="rec-pos-badge active">${p.status}</span>
+            <span class="rec-chevron">→</span>
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderProjectDetail() {
+  const p = state.activeProject;
+  const tabs = [
+    {id:'board', label:'Message Board', icon:'💬'},
+    {id:'todos', label:'To-dos', icon:'✓'},
+    {id:'schedule', label:'Schedule', icon:'📅'},
+    {id:'chat', label:'Campfire', icon:'🔥'},
+    {id:'checkins', label:'Check-ins', icon:'❓'},
+  ];
+
+  return `
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button id="btn-back-projects" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">← Back</button>
+      <div class="page-title">${p.name}</div>
+    </div>
+    <div class="page-sub">${p.description||''}</div>
+  </div>
+
+  <div class="rec-tabs" style="margin-top:0">
+    ${tabs.map(t=>`<button class="rec-tab ${state.projectTab===t.id?'active':''}" data-ptab="${t.id}">${t.icon} ${t.label}</button>`).join('')}
+  </div>
+
+  <div id="project-tab-content">
+    ${state.projectTab==='board' ? renderMessageBoard() : ''}
+    ${state.projectTab==='todos' ? renderTodos() : ''}
+    ${state.projectTab==='schedule' ? renderSchedule() : ''}
+    ${state.projectTab==='chat' ? renderChat() : ''}
+    ${state.projectTab==='checkins' ? renderCheckinView() : ''}
+  </div>`;
+}
+
+function renderMessageBoard() {
+  return `
+  <div style="margin-bottom:20px">
+    <form id="new-message-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+      <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Syne,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
+      <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;min-height:60px"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button type="submit" style="padding:8px 18px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Post Message</button>
+      </div>
+    </form>
+  </div>
+  ${state.projectMessages.map(m => `
+    <div class="outreach-prospect-block" style="margin-bottom:14px">
+      <div style="padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Syne,sans-serif">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:var(--text)">${m.author?.full_name||'Unknown'}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${new Date(m.created_at).toLocaleString()}</div>
+          </div>
+        </div>
+        <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">${m.title}</div>
+        <div style="font-size:13px;color:var(--text-2);line-height:1.7;white-space:pre-wrap">${m.body||''}</div>
+      </div>
+    </div>`).join('')}
+  ${state.projectMessages.length===0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No messages yet. Post the first one above.</div>' : ''}`;
+}
+
+function renderTodos() {
+  return `
+  <div style="margin-bottom:16px">
+    <form id="new-todolist-form" style="display:flex;gap:8px">
+      <input type="text" name="listName" placeholder="New to-do list name..." required style="flex:1;padding:10px 14px;background:var(--bg-1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none" />
+      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">+ Add List</button>
+    </form>
+  </div>
+  ${state.projectTodoLists.map(list => `
+    <div class="outreach-prospect-block" style="margin-bottom:14px">
+      <div class="outreach-prospect-header">
+        <div class="outreach-prospect-name">${list.name}</div>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">${(list.todos||[]).filter(t=>t.completed).length}/${(list.todos||[]).length} done</span>
+      </div>
+      <div style="padding:12px 20px">
+        ${(list.todos||[]).map(t => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-subtle)" data-todo-id="${t.id}">
+            <input type="checkbox" ${t.completed?'checked':''} data-toggle-todo="${t.id}" style="accent-color:var(--accent);cursor:pointer" />
+            <span style="flex:1;font-size:13px;color:${t.completed?'var(--text-3)':'var(--text)'};${t.completed?'text-decoration:line-through':''}">${t.title}</span>
+            ${t.assignee?.full_name ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent-2);background:var(--accent-glow);padding:2px 8px;border-radius:4px">${t.assignee.full_name}</span>` : ''}
+            ${t.due_date ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber)">${t.due_date}</span>` : ''}
+            <button data-delete-todo="${t.id}" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:12px;padding:2px 4px" title="Delete">✕</button>
+          </div>`).join('')}
+        <form class="add-todo-form" data-list-id="${list.id}" style="display:flex;gap:8px;margin-top:10px">
+          <input type="text" name="title" placeholder="Add a to-do..." required style="flex:1;padding:8px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
+          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Add</button>
+        </form>
+      </div>
+    </div>`).join('')}
+  ${state.projectTodoLists.length===0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No to-do lists yet. Create one above.</div>' : ''}`;
+}
+
+function renderSchedule() {
+  return `
+  <form id="new-event-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 120px 100px;gap:10px;align-items:end">
+      <div>
+        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Event Title</label>
+        <input type="text" name="title" required placeholder="Meeting, deadline, milestone..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+      </div>
+      <div>
+        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Date</label>
+        <input type="date" name="date" required style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
+      </div>
+      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Add</button>
+    </div>
+  </form>
+  ${state.projectEvents.map(e => {
+    const d = new Date(e.event_date);
+    const isPast = d < new Date();
+    return `
+    <div style="display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border-subtle)">
+      <div style="min-width:48px;text-align:center">
+        <div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:${isPast?'var(--text-3)':'var(--accent-2)'};line-height:1">${d.getDate()}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">${d.toLocaleString('en',{month:'short'})}</div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:500;color:${isPast?'var(--text-3)':'var(--text)'}">${e.title}</div>
+        ${e.description ? `<div style="font-size:12px;color:var(--text-2);margin-top:2px">${e.description}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('')}
+  ${state.projectEvents.length===0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No events scheduled. Add one above.</div>' : ''}`;
+}
+
+function renderChat() {
+  return `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 280px)">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text)">🔥 Campfire</div>
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+      ${state.projectChat.map(m => {
+        const isMe = m.author_id === currentUser?.id;
+        return `
+        <div style="display:flex;gap:10px;align-items:flex-start;${isMe?'flex-direction:row-reverse':''}">
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,${isMe?'var(--green)':'var(--accent)'},${isMe?'#059669':'#4f46e5'});display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div style="max-width:70%;${isMe?'text-align:right':''}">
+            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-bottom:3px">${m.author?.full_name||'Unknown'} · ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="padding:10px 14px;border-radius:10px;background:${isMe?'var(--accent-glow)':'var(--bg-3)'};font-size:13px;color:var(--text-2);line-height:1.6;display:inline-block;text-align:left">${m.body}</div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${state.projectChat.length===0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No messages yet. Start the conversation!</div>' : ''}
+    </div>
+    <form id="chat-form" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <input type="text" name="message" placeholder="Type a message..." required autocomplete="off" style="flex:1;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none" />
+      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Send</button>
+    </form>
+  </div>`;
+}
+
+function renderCheckinView() {
+  return `
+  <form id="new-checkin-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 120px 80px;gap:10px;align-items:end">
+      <div>
+        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Check-in Question</label>
+        <input type="text" name="question" required placeholder="What did you work on today?" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+      </div>
+      <div>
+        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Frequency</label>
+        <select name="frequency" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Add</button>
+    </div>
+  </form>
+  ${state.projectCheckins.map(c => `
+    <div class="outreach-prospect-block" style="margin-bottom:14px">
+      <div class="outreach-prospect-header">
+        <div>
+          <div class="outreach-prospect-name">❓ ${c.question}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:2px">${c.frequency} · ${(c.responses||[]).length} responses</div>
+        </div>
+      </div>
+      <div style="padding:12px 20px">
+        ${(c.responses||[]).slice(0,5).map(r => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${r.author?.full_name||'Unknown'}</span>
+              <span style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${new Date(r.created_at).toLocaleDateString()}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.6">${r.body}</div>
+          </div>`).join('')}
+        <form class="checkin-respond-form" data-checkin-id="${c.id}" style="display:flex;gap:8px;margin-top:10px">
+          <input type="text" name="response" placeholder="Your response..." required style="flex:1;padding:8px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
+          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Reply</button>
+        </form>
+      </div>
+    </div>`).join('')}
+  ${state.projectCheckins.length===0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No check-ins yet. Create one above.</div>' : ''}`;
+}
+
 // ── Render Helpers ────────────────────────────────────────────────────
 function bantBarHTML(bant) {
   const groups = [{k:'b',v:bant.b,c:'filled-b'},{k:'a',v:bant.a,c:'filled-a'},{k:'n',v:bant.n,c:'filled-n'},{k:'t',v:bant.t,c:'filled-t'}];
@@ -350,30 +768,53 @@ function sourceBadge(src) {
 // ── Sidebar ───────────────────────────────────────────────────────────
 function renderSidebar() {
   const navItems = [
-    {id:'pipeline',   icon:'◈', label:'Pipeline'},
-    {id:'recruiting', icon:'⬡', label:'Recruiting'},
-    {id:'social',     icon:'✦', label:'Social Media'},
-    {id:'icp',        icon:'◎', label:'ICP & Triggers'},
-    {id:'disqualify', icon:'✕', label:'Disqualify'},
-    {id:'outreach',   icon:'✉', label:'Outreach'},
+    {id:'leads',      icon:'⚡', label:'Leads', section:'crm'},
+    {id:'projects',   icon:'▣', label:'Projects', section:'crm'},
+    {id:'pipeline',   icon:'◈', label:'Pipeline', section:'sales'},
+    {id:'recruiting', icon:'⬡', label:'Recruiting', section:'sales'},
+    {id:'social',     icon:'✦', label:'Social Media', section:'tools'},
+    {id:'icp',        icon:'◎', label:'ICP & Triggers', section:'tools'},
+    {id:'disqualify', icon:'✕', label:'Disqualify', section:'tools'},
+    {id:'outreach',   icon:'✉', label:'Outreach', section:'tools'},
   ];
+  const profile = currentProfile;
   return `<aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="logo">Sales<span>OS</span></div>
-      <div class="sub">B2B Pipeline</div>
+      <div class="logo">IT<span>Impact</span></div>
+      <div class="sub">CRM & Projects</div>
     </div>
-    ${navItems.map(n=>`
+    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:8px 12px 4px">CRM</div></div>
+    ${navItems.filter(n=>n.section==='crm').map(n=>`
+      <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
+        <span class="nav-icon">${n.icon}</span>${n.label}
+      </div>`).join('')}
+    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Sales</div></div>
+    ${navItems.filter(n=>n.section==='sales').map(n=>`
+      <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
+        <span class="nav-icon">${n.icon}</span>${n.label}
+      </div>`).join('')}
+    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Tools</div></div>
+    ${navItems.filter(n=>n.section==='tools').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
       </div>`).join('')}
     <div class="sidebar-footer">
-      Updated May 30, 2026
+      ${profile ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Syne,sans-serif">${(profile.full_name||profile.email||'?')[0].toUpperCase()}</div>
+          <div>
+            <div style="font-size:11px;color:var(--text);font-weight:500">${profile.full_name||profile.email}</div>
+            <div style="font-size:9px;color:var(--text-3)">${profile.role}</div>
+          </div>
+        </div>
+        <button class="logout-btn" id="btn-logout" style="font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;width:100%;transition:all 0.15s">Sign Out</button>
+      ` : ''}
       ${state.dbStatus === 'connected'
-        ? '<div style="margin-top:8px;color:#10b981">● Database live</div>'
+        ? '<div style="margin-top:8px;color:#10b981;font-size:10px">● Database live</div>'
         : state.dbStatus === 'error'
-        ? '<div style="margin-top:8px;color:#ef4444">● DB error</div>'
+        ? '<div style="margin-top:8px;color:#ef4444;font-size:10px">● DB error</div>'
         : state.dbStatus === 'not-configured'
-        ? '<div style="margin-top:8px;color:#5a5a72">● Local only</div>'
+        ? '<div style="margin-top:8px;color:#5a5a72;font-size:10px">● Local only</div>'
         : ''}
     </div>
   </aside>`;
@@ -877,6 +1318,8 @@ function renderModal() {
 
 // ── Render ────────────────────────────────────────────────────────────
 function renderView() {
+  if (state.view==='leads')      return renderLeads();
+  if (state.view==='projects')   return renderProjects();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -1096,19 +1539,51 @@ function renderTalentPoolTab() {
 }
 
 function render() {
+  if (!state.authenticated) {
+    document.getElementById('app').innerHTML = renderAuthScreen();
+    attachAuthEvents();
+    return;
+  }
   document.getElementById('app').innerHTML = `
     ${renderSidebar()}
     <main class="main" id="main-content">${renderView()}</main>
     <div class="toast-container" id="toast-container"></div>`;
   attachEvents();
   if (state.modal) renderModal();
+  if (state.leadModal) {
+    const el = document.createElement('div');
+    el.innerHTML = renderLeadModal();
+    document.body.appendChild(el.firstElementChild);
+    attachLeadModalEvents();
+  }
 }
 
 // ── Attach Events ─────────────────────────────────────────────────────
 function attachEvents() {
+  // Sign out
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    await signOut();
+    state.authenticated = false;
+    render();
+  });
   // Nav
   document.querySelectorAll('[data-nav]').forEach(el => {
-    el.addEventListener('click', () => { state.view=el.dataset.nav; state.expandedId=null; state.modal=null; render(); });
+    el.addEventListener('click', async () => {
+      if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+      state.activeProject = null;
+      state.view=el.dataset.nav; state.expandedId=null; state.modal=null;
+      if (el.dataset.nav === 'leads' && state.leads.length === 0) {
+        state.leadsLoading = true; render();
+        state.leads = await fetchLeads();
+        state.leadsLoading = false;
+      }
+      if (el.dataset.nav === 'projects' && state.projects.length === 0) {
+        state.projectsLoading = true; render();
+        state.projects = await fetchProjects();
+        state.projectsLoading = false;
+      }
+      render();
+    });
   });
   // Stage filter
   document.querySelectorAll('[data-stage]').forEach(el => {
@@ -1247,6 +1722,8 @@ function attachEvents() {
 
   attachExpandedEvents();
   attachCopyButtons();
+  attachLeadEvents();
+  attachProjectEvents();
 }
 
 function attachExpandedEvents() {
@@ -1409,15 +1886,271 @@ function refreshTbody() {
   }
 }
 
+// ── Auth Events ──────────────────────────────────────────────────────
+function attachAuthEvents() {
+  document.querySelectorAll('[data-authview]').forEach(el => {
+    el.addEventListener('click', () => { state.authView = el.dataset.authview; state.authError = null; render(); });
+  });
+  const form = document.getElementById('auth-form');
+  if (form) form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    state.authLoading = true;
+    state.authError = null;
+    render();
+    const fd = new FormData(form);
+    try {
+      if (state.authView === 'login') {
+        await signIn(fd.get('email'), fd.get('password'));
+      } else {
+        await signUp(fd.get('email'), fd.get('password'), fd.get('fullName'));
+        showToast('Account created! You can now sign in.', 'success');
+        state.authView = 'login';
+      }
+    } catch (err) {
+      state.authError = err.message;
+    }
+    state.authLoading = false;
+    render();
+  });
+}
+
+// ── Lead Events ──────────────────────────────────────────────────────
+function attachLeadEvents() {
+  document.getElementById('btn-new-lead')?.addEventListener('click', () => {
+    state.leadModal = true;
+    state.leadEditData = {};
+    render();
+  });
+  document.querySelectorAll('[data-lead-filter]').forEach(el => {
+    el.addEventListener('click', () => { state.leadFilter = el.dataset.leadFilter; render(); });
+  });
+  document.querySelectorAll('[data-lead-status]').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      const id = sel.dataset.leadStatus;
+      await updateLead(id, { status: e.target.value });
+      state.leads = await fetchLeads();
+      showToast('Lead status updated', 'success');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-edit-lead]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('select')) return;
+      const lead = state.leads.find(l => l.id === el.dataset.editLead);
+      if (lead) { state.leadModal = true; state.leadEditData = { ...lead }; render(); }
+    });
+  });
+}
+
+function attachLeadModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  document.getElementById('modal-close')?.addEventListener('click', closeLeadModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeLeadModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeLeadModal(); });
+  document.getElementById('btn-delete-lead')?.addEventListener('click', async () => {
+    if (!confirm('Delete this lead?')) return;
+    await deleteLead(state.leadEditData.id);
+    state.leads = await fetchLeads();
+    showToast('Lead deleted', 'success');
+    closeLeadModal();
+  });
+  document.getElementById('lead-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), phone: fd.get('phone'), value: parseFloat(fd.get('value'))||0, source: fd.get('source'), notes: fd.get('notes') };
+    if (state.leadEditData?.id) {
+      await updateLead(state.leadEditData.id, data);
+      showToast('Lead updated', 'success');
+    } else {
+      await createLead(data);
+      showToast('Lead added!', 'success');
+    }
+    state.leads = await fetchLeads();
+    closeLeadModal();
+  });
+}
+
+function closeLeadModal() {
+  state.leadModal = null;
+  state.leadEditData = null;
+  const el = document.getElementById('modal-overlay');
+  if (el) el.remove();
+  render();
+}
+
+// ── Project Events ───────────────────────────────────────────────────
+function attachProjectEvents() {
+  document.getElementById('btn-new-project')?.addEventListener('click', async () => {
+    const name = prompt('Project name:');
+    if (!name) return;
+    const desc = prompt('Description (optional):') || '';
+    await createProject(name, desc);
+    state.projects = await fetchProjects();
+    showToast('Project created!', 'success');
+    render();
+  });
+  document.querySelectorAll('[data-open-project]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const p = state.projects.find(x => x.id === el.dataset.openProject);
+      if (p) await openProject(p);
+    });
+  });
+  document.getElementById('btn-back-projects')?.addEventListener('click', () => {
+    if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
+    state.activeProject = null;
+    render();
+  });
+  document.querySelectorAll('[data-ptab]').forEach(el => {
+    el.addEventListener('click', async () => {
+      state.projectTab = el.dataset.ptab;
+      await loadProjectTabData();
+      render();
+    });
+  });
+  // Message board
+  document.getElementById('new-message-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await createMessage(state.activeProject.id, fd.get('title'), fd.get('body'));
+    state.projectMessages = await fetchMessages(state.activeProject.id);
+    showToast('Message posted', 'success');
+    render();
+  });
+  // Todo lists
+  document.getElementById('new-todolist-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await createTodoList(state.activeProject.id, fd.get('listName'));
+    state.projectTodoLists = await fetchTodoLists(state.activeProject.id);
+    showToast('To-do list created', 'success');
+    render();
+  });
+  document.querySelectorAll('.add-todo-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      await createTodo(form.dataset.listId, fd.get('title'));
+      state.projectTodoLists = await fetchTodoLists(state.activeProject.id);
+      render();
+    });
+  });
+  document.querySelectorAll('[data-toggle-todo]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      await toggleTodo(cb.dataset.toggleTodo, cb.checked);
+      state.projectTodoLists = await fetchTodoLists(state.activeProject.id);
+      render();
+    });
+  });
+  document.querySelectorAll('[data-delete-todo]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await deleteTodo(btn.dataset.deleteTodo);
+      state.projectTodoLists = await fetchTodoLists(state.activeProject.id);
+      render();
+    });
+  });
+  // Schedule
+  document.getElementById('new-event-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await createEvent(state.activeProject.id, fd.get('title'), '', fd.get('date'));
+    state.projectEvents = await fetchEvents(state.activeProject.id);
+    showToast('Event added', 'success');
+    render();
+  });
+  // Chat
+  document.getElementById('chat-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const msg = fd.get('message').trim();
+    if (!msg) return;
+    await sendChatMessage(state.activeProject.id, msg);
+    e.target.reset();
+    // Message will appear via realtime subscription
+    state.projectChat = await fetchChatMessages(state.activeProject.id);
+    render();
+    scrollChatToBottom();
+  });
+  // Check-ins
+  document.getElementById('new-checkin-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await createCheckin(state.activeProject.id, fd.get('question'), fd.get('frequency'));
+    state.projectCheckins = await fetchCheckins(state.activeProject.id);
+    showToast('Check-in created', 'success');
+    render();
+  });
+  document.querySelectorAll('.checkin-respond-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      await respondToCheckin(form.dataset.checkinId, fd.get('response'));
+      state.projectCheckins = await fetchCheckins(state.activeProject.id);
+      render();
+    });
+  });
+  scrollChatToBottom();
+}
+
+async function openProject(p) {
+  state.activeProject = p;
+  state.projectTab = 'board';
+  await loadProjectTabData();
+  render();
+}
+
+async function loadProjectTabData() {
+  const pid = state.activeProject?.id;
+  if (!pid) return;
+  if (state.projectTab === 'board') state.projectMessages = await fetchMessages(pid);
+  if (state.projectTab === 'todos') state.projectTodoLists = await fetchTodoLists(pid);
+  if (state.projectTab === 'schedule') state.projectEvents = await fetchEvents(pid);
+  if (state.projectTab === 'chat') {
+    state.projectChat = await fetchChatMessages(pid);
+    if (state.chatUnsub) state.chatUnsub();
+    state.chatUnsub = subscribeToChatMessages(pid, (msg) => {
+      if (!state.projectChat.find(m => m.id === msg.id)) {
+        state.projectChat.push(msg);
+        render();
+        scrollChatToBottom();
+      }
+    });
+  }
+  if (state.projectTab === 'checkins') state.projectCheckins = await fetchCheckins(pid);
+}
+
+function scrollChatToBottom() {
+  setTimeout(() => {
+    const el = document.getElementById('chat-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────
 async function boot() {
   // Show loading state
   document.getElementById('app').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0f;color:#9090a8;font-family:'DM Mono',monospace;font-size:12px;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080d;color:#9494b0;font-family:'DM Mono',monospace;font-size:12px;flex-direction:column;gap:12px">
       <div style="width:24px;height:24px;border:2px solid rgba(99,102,241,0.3);border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></div>
-      ${DB_ENABLED ? 'Connecting to database…' : 'Loading…'}
+      ${DB_ENABLED ? 'Connecting...' : 'Loading…'}
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+
+  // Initialize auth
+  if (DB_ENABLED) {
+    const user = await initAuth();
+    state.authenticated = !!user;
+    // Listen for auth changes
+    window.addEventListener('auth-change', () => {
+      state.authenticated = !!currentUser;
+      if (state.authenticated) {
+        state.view = 'leads';
+      }
+      render();
+    });
+  } else {
+    state.authenticated = true; // skip auth if no DB
+  }
 
   if (DB_ENABLED) {
     try {
@@ -1464,6 +2197,13 @@ async function boot() {
     state.dbStatus = 'not-configured';
   }
 
+  if (state.authenticated) {
+    state.view = 'leads';
+    state.leadsLoading = true;
+    render();
+    state.leads = await fetchLeads();
+    state.leadsLoading = false;
+  }
   render();
   checkBackend().then(bs => { state.backendStatus = bs; });
 }
