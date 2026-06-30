@@ -11,7 +11,7 @@ import { fetchTeamMembers as fetchTeam, updateProfile } from './team.js';
 import { fetchArticles, createArticle, updateArticle, deleteArticle } from './articles.js';
 import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost } from './social-planner.js';
 import { fetchNotifications, getUnreadCount, markAsRead, markAllRead, sendNotification, subscribeToNotifications } from './notifications.js';
-import { fetchAnalyticsOverview } from './analytics.js';
+import { fetchAnalyticsOverview, fetchLiveVisitors, flagFor } from './analytics.js';
 import { getApiKey, getProvider, setApiKey, clearApiKey, hasApiKey, runMarketingPlannerAgent, runLeadFinderAgent, runHRHeadhunterAgent, runChatAssistant, runJarvis } from './ai-agents.js';
 import { buildGraph, NODE_TYPE_LABELS } from './relationship-map.js';
 import {
@@ -125,6 +125,8 @@ const state = {
   analyticsDays: 7,
   googleConnected: localStorage.getItem('google_connected') === '1',
   gaData: null,
+  liveVisitors: [],
+  liveVisitorsInterval: null,
   // Agents
   activeAgent: null,
   agentLoading: false,
@@ -506,7 +508,7 @@ function renderAddMemberModal() {
         </div>
         <div style="margin-bottom:14px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
-          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Inter,sans-serif">${escHtml(m.bio||'')}</textarea>
+          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Manrope,sans-serif">${escHtml(m.bio||'')}</textarea>
         </div>
         <div style="margin-bottom:16px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
@@ -581,7 +583,7 @@ function renderArticleModal() {
         </div>
         <div style="margin-bottom:14px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Content</label>
-          <textarea name="body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
+          <textarea name="body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
           ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
@@ -668,7 +670,7 @@ function renderSocialPostModal() {
       <form id="social-post-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
-          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;line-height:1.7"></textarea>
+          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7"></textarea>
         </div>
         <div style="margin-bottom:14px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
@@ -743,6 +745,25 @@ function renderAnalyticsView() {
     </div>
     ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Refresh GA Data</button>`}
   </div>
+
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);${state.liveVisitors.length?'animation:livePulse 1.5s infinite':''}"></span>
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
+    </div>
+    ${state.liveVisitors.length === 0 ? `<div style="font-size:12px;color:var(--text-3);padding:8px 0">No one online right now. Visitors appear here within 90 seconds of activity.</div>` : `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+      ${state.liveVisitors.map(v => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-2);border-radius:10px;border:1px solid var(--border)">
+          <span style="font-size:22px">${flagFor(v.country)}</span>
+          <div style="min-width:0">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">${v.country || 'Unknown location'}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.device==='mobile'?'📱':'💻'} ${(v.last_page||'').replace(/^https?:\/\/[^/]+/,'')||'/'}</div>
+          </div>
+        </div>`).join('')}
+    </div>`}
+  </div>
+  <style>@keyframes livePulse{0%,100%{opacity:1}50%{opacity:0.3}}</style>
 
   ${state.gaData ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px">
@@ -873,7 +894,7 @@ function renderTaskAgentUI(a) {
     <label style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
       ${a.id==='marketing' ? 'Context (audience, focus, recent wins, etc.)' : a.id==='leadfinder' ? 'Target context (industry, ICP details)' : 'Position details (title, requirements, seniority)'}
     </label>
-    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
+    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
     <button id="btn-run-agent" class="find-leads-btn" ${state.agentLoading?'disabled':''} style="background:${a.color}">
       ${state.agentLoading ? '⏳ Thinking...' : '✨ Run Agent'}
     </button>
@@ -1082,15 +1103,15 @@ function renderAuthScreen() {
           ${!isLogin ? `
           <div style="margin-bottom:14px">
             <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
-            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="Amish Mirza" />
+            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="Amish Mirza" />
           </div>` : ''}
           <div style="margin-bottom:14px">
             <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
-            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="you@itimpact.com" />
+            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="you@itimpact.com" />
           </div>
           <div style="margin-bottom:20px">
             <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
-            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="••••••••" />
+            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="••••••••" />
           </div>
           <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
             ${state.authLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
@@ -1207,7 +1228,7 @@ function renderLeadModal() {
         </div>
         <div style="margin-bottom:16px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
-          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Inter,sans-serif">${escHtml(l.notes||'')}</textarea>
+          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Manrope,sans-serif">${escHtml(l.notes||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
@@ -1289,7 +1310,7 @@ function renderMessageBoard() {
   <div style="margin-bottom:20px">
     <form id="new-message-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
       <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Syne,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
-      <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;min-height:60px"></textarea>
+      <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;min-height:60px"></textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
         <button type="submit" style="padding:8px 18px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Post Message</button>
       </div>
@@ -2339,6 +2360,16 @@ function attachEvents() {
       if (el.dataset.nav === 'analytics') {
         state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
         if (state.googleConnected) await fetchGAData();
+        state.liveVisitors = await fetchLiveVisitors();
+        if (state.liveVisitorsInterval) clearInterval(state.liveVisitorsInterval);
+        state.liveVisitorsInterval = setInterval(async () => {
+          if (state.view !== 'analytics') { clearInterval(state.liveVisitorsInterval); return; }
+          state.liveVisitors = await fetchLiveVisitors();
+          render();
+        }, 10000);
+      } else if (state.liveVisitorsInterval) {
+        clearInterval(state.liveVisitorsInterval);
+        state.liveVisitorsInterval = null;
       }
       if (el.dataset.nav === 'agents') {
         state.activeAgent = null; state.agentOutput = ''; state.agentError = null;
@@ -3107,6 +3138,7 @@ function attachAnalyticsEvents() {
     el.addEventListener('click', async () => {
       state.analyticsDays = parseInt(el.dataset.analyticsDays);
       state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
+      if (state.googleConnected) await fetchGAData();
       render();
     });
   });
@@ -3129,6 +3161,7 @@ function attachAnalyticsEvents() {
     if (days < 1) { showToast('Invalid date range', 'error'); return; }
     state.analyticsDays = days;
     state.analyticsData = await fetchAnalyticsOverview(days);
+    if (state.googleConnected) await fetchGAData(from, to);
     showToast(`Showing ${days} days of data`, 'success');
     render();
   });
@@ -3209,9 +3242,11 @@ function attachAgentEvents() {
   });
 }
 
-async function fetchGAData() {
+async function fetchGAData(customFrom, customTo) {
   try {
-    const res = await fetch('/.netlify/functions/ga-data');
+    let start = `${state.analyticsDays}daysAgo`, end = 'today';
+    if (customFrom && customTo) { start = customFrom; end = customTo; }
+    const res = await fetch(`/.netlify/functions/ga-data?start=${start}&end=${end}`);
     const data = await res.json();
     state.gaData = data;
   } catch (err) {

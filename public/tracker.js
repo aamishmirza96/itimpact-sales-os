@@ -7,6 +7,18 @@
   if(!sid){sid='s_'+Math.random().toString(36).substr(2,12)+'_'+Date.now();sessionStorage.setItem('_it_sid',sid);}
 
   var ps=Date.now(),ms=0;
+  var geo={country:sessionStorage.getItem('_it_country')||'',countryCode:sessionStorage.getItem('_it_cc')||''};
+
+  function loadGeo(cb){
+    if(geo.country){cb();return;}
+    fetch('https://ipapi.co/json/').then(function(r){return r.json();}).then(function(d){
+      geo.country=d.country_name||'';
+      geo.countryCode=d.country_code||'';
+      sessionStorage.setItem('_it_country',geo.country);
+      sessionStorage.setItem('_it_cc',geo.countryCode);
+      cb();
+    }).catch(function(){cb();});
+  }
 
   function post(table,body){
     try{
@@ -33,7 +45,7 @@
 
   function sess(){
     var t=Math.round((Date.now()-ps)/1000);
-    upsert('analytics_sessions',{id:sid,first_page:sessionStorage.getItem('_it_fp')||location.href,last_page:location.href,pages_viewed:parseInt(sessionStorage.getItem('_it_pv')||'1'),total_time:t,device:/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'desktop',browser:(navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)||['Other'])[0],started_at:sessionStorage.getItem('_it_start')||new Date().toISOString(),ended_at:new Date().toISOString()});
+    upsert('analytics_sessions',{id:sid,first_page:sessionStorage.getItem('_it_fp')||location.href,last_page:location.href,pages_viewed:parseInt(sessionStorage.getItem('_it_pv')||'1'),total_time:t,device:/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'desktop',browser:(navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)||['Other'])[0],country:geo.country,started_at:sessionStorage.getItem('_it_start')||new Date().toISOString(),ended_at:new Date().toISOString()});
   }
 
   if(!sessionStorage.getItem('_it_fp')){
@@ -43,8 +55,10 @@
   var pv=parseInt(sessionStorage.getItem('_it_pv')||'0')+1;
   sessionStorage.setItem('_it_pv',''+pv);
 
-  ev('pageview');
-  sess();
+  loadGeo(function(){
+    ev('pageview');
+    sess();
+  });
 
   document.addEventListener('click',function(e){
     var el=e.target;

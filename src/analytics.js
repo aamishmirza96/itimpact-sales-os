@@ -34,3 +34,18 @@ export async function fetchAnalyticsOverview(days = 7) {
 
   return { sessions: sessions.length, pageViews, clicks, avgTime, topPages, events, dailyData, totalSessions: sessions };
 }
+
+const COUNTRY_FLAGS = {
+  'United States': '🇺🇸', 'Pakistan': '🇵🇰', 'United Kingdom': '🇬🇧', 'Canada': '🇨🇦',
+  'India': '🇮🇳', 'Germany': '🇩🇪', 'France': '🇫🇷', 'Australia': '🇦🇺', 'UAE': '🇦🇪',
+  'United Arab Emirates': '🇦🇪', 'Saudi Arabia': '🇸🇦', 'Singapore': '🇸🇬', 'Netherlands': '🇳🇱',
+  'Brazil': '🇧🇷', 'Mexico': '🇲🇽', 'Japan': '🇯🇵', 'China': '🇨🇳', 'Spain': '🇪🇸', 'Italy': '🇮🇹',
+};
+export function flagFor(country) { return COUNTRY_FLAGS[country] || '🌐'; }
+
+export async function fetchLiveVisitors() {
+  if (!supabase) return [];
+  const since = new Date(Date.now() - 90 * 1000).toISOString();
+  const { data } = await supabase.from('analytics_sessions').select('*').gte('ended_at', since).order('ended_at', { ascending: false });
+  return data || [];
+}

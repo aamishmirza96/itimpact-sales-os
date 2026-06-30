@@ -27,6 +27,10 @@ async function getAccessToken() {
 
 export default async (req) => {
   try {
+    const url = new URL(req.url);
+    const startDate = url.searchParams.get('start') || '7daysAgo';
+    const endDate = url.searchParams.get('end') || 'today';
+
     const accessToken = await getAccessToken();
     const propertyId = process.env.GA4_PROPERTY_ID;
 
@@ -34,7 +38,7 @@ export default async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
       body: JSON.stringify({
-        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: 'pagePath' }],
         metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }, { name: 'averageSessionDuration' }, { name: 'sessions' }],
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
