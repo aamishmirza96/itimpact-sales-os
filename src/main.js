@@ -131,6 +131,7 @@ const state = {
   analyticsDays: 7,
   googleConnected: localStorage.getItem('google_connected') === '1',
   gaData: null,
+  linkedinConnected: localStorage.getItem('linkedin_connected') === '1',
   liveVisitors: [],
   liveVisitorsInterval: null,
   // Website Submissions
@@ -623,6 +624,15 @@ function renderSocialPlanner() {
     </div>
     <button class="find-leads-btn" id="btn-new-social-post">+ New Post</button>
   </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:${state.linkedinConnected?'var(--green-light)':'var(--bg-1)'};border:1px solid ${state.linkedinConnected?'rgba(16,185,129,0.25)':'var(--border)'};border-radius:var(--radius);margin-bottom:18px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">💼</span>
+      <div style="font-weight:700;font-size:13px;color:var(--text)">LinkedIn ${state.linkedinConnected?'— Connected ✓':'— Not Connected'}</div>
+    </div>
+    ${!state.linkedinConnected ? `<button class="find-leads-btn" id="btn-connect-linkedin" style="padding:8px 16px;font-size:12px">Connect LinkedIn</button>` : ''}
+  </div>
+
   <div class="stage-bar" style="margin-bottom:20px">
     ${statuses.map(s => {
       const count = s==='all' ? state.socialPosts.length : state.socialPosts.filter(p=>p.status===s).length;
@@ -635,6 +645,7 @@ function renderSocialPlanner() {
       const statusColors = {draft:'#5a5a72',pending_approval:'#f59e0b',approved:'#10b981',rejected:'#ef4444',scheduled:'#6366f1',published:'#10b981'};
       const sc = statusColors[p.status]||'#5a5a72';
       const pendingForMe = (p.approvals||[]).find(a => a.approver_id === currentUser?.id && a.status === 'pending');
+      const canPublish = state.linkedinConnected && (p.platforms||[]).includes('LinkedIn') && p.status === 'approved';
       return `
       <div class="rec-cand-card">
         <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,${sc},${sc}cc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📱</div>
@@ -645,6 +656,7 @@ function renderSocialPlanner() {
               <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
                 ${(p.platforms||[]).map(pl => `<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
               </div>
+              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:6px;padding:6px 14px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
               <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">
                 ${p.author?.full_name||'Unknown'} · ${new Date(p.created_at).toLocaleDateString()}
                 ${p.scheduled_date ? ' · 📅 '+new Date(p.scheduled_date).toLocaleDateString() : ''}
@@ -3282,6 +3294,38 @@ function attachSocialPlannerEvents() {
       render();
     });
   });
+  document.getElementById('btn-connect-linkedin')?.addEventListener('click', () => {
+    const clientId = '77se4a33m0uhm5';
+    const redirectUri = `${location.origin}/.netlify/functions/linkedin-oauth-callback`;
+    const scope = encodeURIComponent('openid profile w_member_social');
+    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
+    location.href = authUrl;
+  });
+  document.querySelectorAll('[data-publish-linkedin]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const post = state.socialPosts.find(p => p.id === btn.dataset.publishLinkedin);
+      if (!post) return;
+      btn.textContent = 'Publishing...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/.netlify/functions/linkedin-post', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: post.content }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to publish');
+        await updatePostStatus(post.id, 'published');
+        state.socialPosts = await fetchSocialPosts();
+        showToast('Published to LinkedIn ✓', 'success');
+        render();
+      } catch (err) {
+        showToast('LinkedIn error: ' + err.message, 'error');
+        btn.textContent = '🚀 Publish to LinkedIn';
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 function attachSocialPostModalEvents() {
@@ -3587,6 +3631,10 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   if (params.get('google_connected') === '1') {
     localStorage.setItem('google_connected', '1');
+    window.history.replaceState({}, '', location.pathname);
+  }
+  if (params.get('linkedin_connected') === '1') {
+    localStorage.setItem('linkedin_connected', '1');
     window.history.replaceState({}, '', location.pathname);
   }
 
