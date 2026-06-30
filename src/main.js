@@ -437,7 +437,7 @@ function renderTeam() {
             <button class="team-delete-btn" data-delete-member="${m.id}" data-member-name="${escHtml(m.full_name||m.email)}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,0.2);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Remove">✕</button>
           </div>` : ''}
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0;position:relative">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0;position:relative">
             ${(m.full_name||m.email||'?')[0].toUpperCase()}
             <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card-flat)"></div>
           </div>
@@ -516,7 +516,7 @@ function renderAddMemberModal() {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Update Member'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Update Member'}</button>
         </div>
       </form>
     </div>
@@ -547,7 +547,7 @@ function renderArticlesView() {
             <span class="cand-status-pill" style="background:${a.status==='published'?'var(--green-glow)':a.status==='draft'?'rgba(90,90,114,0.15)':'var(--amber-glow)'};color:${a.status==='published'?'var(--green)':a.status==='draft'?'var(--text-3)':'var(--amber)'}">${a.status}</span>
             <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
           </div>
-          <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
+          <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
           <div style="font-size:12px;color:var(--text-2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${(a.body||'').replace(/[#*_]/g,'').substring(0,200)}</div>
           <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
         </div>
@@ -569,7 +569,7 @@ function renderArticleModal() {
       <form id="article-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
-          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Syne,sans-serif;font-weight:600" />
+          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Manrope,sans-serif;font-weight:600" />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
@@ -591,7 +591,7 @@ function renderArticleModal() {
             <option value="draft" ${a.status==='draft'||!a.status?'selected':''}>Draft</option>
             <option value="published" ${a.status==='published'?'selected':''}>Published</option>
           </select>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
         </div>
       </form>
     </div>
@@ -697,7 +697,7 @@ function renderSocialPostModal() {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">Create Post</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">Create Post</button>
         </div>
       </form>
     </div>
@@ -749,7 +749,7 @@ function renderAnalyticsView() {
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);${state.liveVisitors.length?'animation:livePulse 1.5s infinite':''}"></span>
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
     </div>
     ${state.liveVisitors.length === 0 ? `<div style="font-size:12px;color:var(--text-3);padding:8px 0">No one online right now. Visitors appear here within 90 seconds of activity.</div>` : `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
@@ -767,7 +767,7 @@ function renderAnalyticsView() {
 
   ${state.gaData ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px">
-    <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
+    <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
     ${state.gaData.error ? `<div style="color:var(--red);font-size:12px">${state.gaData.error}</div>` : `
     <table style="width:100%;font-size:12px">
       <thead><tr style="color:var(--text-3);font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
@@ -793,7 +793,7 @@ function renderAnalyticsView() {
 
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
       ${d.dailyData?.length ? `
       <div style="display:flex;align-items:flex-end;gap:4px;height:140px">
         ${d.dailyData.map(([day, count]) => `
@@ -805,7 +805,7 @@ function renderAnalyticsView() {
       </div>` : '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">No page view data yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
       ${d.topPages.length ? d.topPages.map((p,i) => `
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
           <span style="font-family:'DM Mono',monospace;font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
@@ -817,7 +817,7 @@ function renderAnalyticsView() {
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
       ${(d.events||[]).filter(e=>e.event_type==='click').slice(0,8).map(e => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
           <span style="font-family:'DM Mono',monospace;font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
@@ -826,7 +826,7 @@ function renderAnalyticsView() {
         </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No clicks recorded yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
       ${(d.totalSessions||[]).slice(0,8).map(s => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
           <span style="font-size:12px">${s.device==='mobile'?'📱':'💻'}</span>
@@ -859,7 +859,7 @@ function renderAgentsView() {
     ${AGENTS.map(a => `
       <div class="rec-pos-card" style="cursor:pointer;padding:24px" data-open-agent="${a.id}">
         <div style="width:52px;height:52px;border-radius:14px;background:${a.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">${a.icon}</div>
-        <div style="font-family:Syne,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.6">${a.desc}</div>
         <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
       </div>`).join('')}
@@ -903,7 +903,7 @@ function renderTaskAgentUI(a) {
   ${state.agentOutput ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:16px;box-shadow:var(--shadow-card)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
       <button class="copy-btn" id="btn-copy-agent-output">Copy</button>
     </div>
     <div style="font-size:13px;color:var(--text-2);line-height:1.8;white-space:pre-wrap">${escHtml(state.agentOutput)}</div>
@@ -1044,7 +1044,7 @@ function renderMapView() {
         <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
         <button id="btn-close-node-panel" style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;width:24px;height:24px;cursor:pointer;color:var(--text-3)">✕</button>
       </div>
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
       <div style="font-size:13px;color:var(--text-2)">${selected.sub||''}</div>
     </div>` : ''}
   </div>`;
@@ -1056,7 +1056,7 @@ function renderNotifPanel() {
   return `
   <div id="notif-panel" style="position:fixed;top:0;right:0;width:360px;height:100vh;background:var(--bg-1);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.4);animation:slideIn 0.2s ease">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
+      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
       <div style="display:flex;gap:8px">
         <button id="btn-mark-all-read" style="font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
         <button id="btn-close-notif" style="font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
@@ -1090,7 +1090,7 @@ function renderAuthScreen() {
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg);padding:20px">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:32px">
-        <div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
         <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
       </div>
       <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:28px 32px">
@@ -1113,7 +1113,7 @@ function renderAuthScreen() {
             <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
             <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="••••••••" />
           </div>
-          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
+          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Manrope,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
             ${state.authLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
@@ -1233,7 +1233,7 @@ function renderLeadModal() {
         <div style="display:flex;gap:10px;justify-content:flex-end">
           ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
           <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Syne,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
         </div>
       </form>
     </div>
@@ -1309,7 +1309,7 @@ function renderMessageBoard() {
   return `
   <div style="margin-bottom:20px">
     <form id="new-message-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-      <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Syne,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
+      <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Manrope,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
       <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;min-height:60px"></textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
         <button type="submit" style="padding:8px 18px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Post Message</button>
@@ -1320,13 +1320,13 @@ function renderMessageBoard() {
     <div class="outreach-prospect-block" style="margin-bottom:14px">
       <div style="padding:16px 20px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Syne,sans-serif">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Manrope,sans-serif">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
           <div>
             <div style="font-size:12px;font-weight:500;color:var(--text)">${m.author?.full_name||'Unknown'}</div>
             <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${new Date(m.created_at).toLocaleString()}</div>
           </div>
         </div>
-        <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">${m.title}</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">${m.title}</div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.7;white-space:pre-wrap">${m.body||''}</div>
       </div>
     </div>`).join('')}
@@ -1386,7 +1386,7 @@ function renderSchedule() {
     return `
     <div style="display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border-subtle)">
       <div style="min-width:48px;text-align:center">
-        <div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:${isPast?'var(--text-3)':'var(--accent-2)'};line-height:1">${d.getDate()}</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:20px;color:${isPast?'var(--text-3)':'var(--accent-2)'};line-height:1">${d.getDate()}</div>
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">${d.toLocaleString('en',{month:'short'})}</div>
       </div>
       <div>
@@ -1401,13 +1401,13 @@ function renderSchedule() {
 function renderChat() {
   return `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 280px)">
-    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text)">🔥 Campfire</div>
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-family:Manrope,sans-serif;font-weight:700;font-size:14px;color:var(--text)">🔥 Campfire</div>
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
       ${state.projectChat.map(m => {
         const isMe = m.author_id === currentUser?.id;
         return `
         <div style="display:flex;gap:10px;align-items:flex-start;${isMe?'flex-direction:row-reverse':''}">
-          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,${isMe?'var(--green)':'var(--accent)'},${isMe?'#059669':'#4f46e5'});display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;font-family:Syne,sans-serif;flex-shrink:0">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,${isMe?'var(--green)':'var(--accent)'},${isMe?'#059669':'#4f46e5'});display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
           <div style="max-width:70%;${isMe?'text-align:right':''}">
             <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-bottom:3px">${m.author?.full_name||'Unknown'} · ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
             <div style="padding:10px 14px;border-radius:10px;background:${isMe?'var(--accent-glow)':'var(--bg-3)'};font-size:13px;color:var(--text-2);line-height:1.6;display:inline-block;text-align:left">${m.body}</div>
@@ -1536,7 +1536,7 @@ function renderSidebar() {
     <div class="sidebar-footer">
       ${profile ? `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Syne,sans-serif">${(profile.full_name||profile.email||'?')[0].toUpperCase()}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Manrope,sans-serif">${(profile.full_name||profile.email||'?')[0].toUpperCase()}</div>
           <div>
             <div style="font-size:11px;color:var(--text);font-weight:500">${profile.full_name||profile.email}</div>
             <div style="font-size:9px;color:var(--text-3)">${profile.role}</div>
