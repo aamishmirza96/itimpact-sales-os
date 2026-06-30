@@ -22,6 +22,12 @@ import {
   fetchChatMessages, sendChatMessage, subscribeToChatMessages,
   fetchCheckins, createCheckin, respondToCheckin,
 } from './projects.js';
+import {
+  fetchContactSubmissions, updateContactStatus,
+  fetchGeneralCVs, updateGeneralCVStatus, updateGeneralCVNotes,
+  fetchJobApplications, updateJobApplicationStatus, updateJobApplicationNotes,
+  fetchAIAssessments, updateAIAssessmentStatus,
+} from './submissions.js';
 
 // ── Persist & State ──────────────────────────────────────────────────
 const LS_KEY = 'sales_os_v2';
@@ -127,6 +133,13 @@ const state = {
   gaData: null,
   liveVisitors: [],
   liveVisitorsInterval: null,
+  // Website Submissions
+  contactSubmissions: [],
+  generalCVs: [],
+  jobApplications: [],
+  aiAssessments: [],
+  jobAppFilter: 'all',
+  expandedSubmission: null,
   // Agents
   activeAgent: null,
   agentLoading: false,
@@ -1050,6 +1063,150 @@ function renderMapView() {
   </div>`;
 }
 
+// ── Website Submissions Views ───────────────────────────────────────
+function submissionCard(s, opts) {
+  const { typeLabel, typeIcon, statusOptions, statusField='status', extraFields=[], idPrefix } = opts;
+  const isExpanded = state.expandedSubmission === idPrefix + s.id;
+  const st = statusOptions.find(o => o.id === s[statusField]) || statusOptions[0];
+  return `
+  <div class="rec-cand-card" style="flex-direction:column;gap:0;cursor:pointer" data-toggle-submission="${idPrefix}${s.id}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
+      <div style="display:flex;gap:14px;flex:1;min-width:0">
+        <div class="rec-cand-avatar">${(s.full_name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:15px;color:var(--text)">${s.full_name}</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:2px">${s.email} ${s.phone?' · '+s.phone:''}</div>
+          ${extraFields.map(f => s[f.key] ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px">${f.label}: ${s[f.key]}</div>` : '').join('')}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <span class="cand-status-pill" style="background:${st.color}1a;color:${st.color};border:1px solid ${st.color}33">${st.label}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${new Date(s.created_at).toLocaleDateString()} ${new Date(s.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+    </div>
+    ${isExpanded ? `
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+      ${opts.renderDetail ? opts.renderDetail(s) : ''}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">Status:</span>
+        <select class="cand-status-select" data-submission-status="${idPrefix}${s.id}" data-submission-table="${opts.table}">
+          ${statusOptions.map(o=>`<option value="${o.id}" ${s[statusField]===o.id?'selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+const CONTACT_STATUSES = [{id:'new',label:'New',color:'#f59e0b'},{id:'contacted',label:'Contacted',color:'#6366f1'},{id:'closed',label:'Closed',color:'#10b981'}];
+const CV_STATUSES = [{id:'new',label:'New',color:'#f59e0b'},{id:'reviewing',label:'Reviewing',color:'#6366f1'},{id:'shortlisted',label:'Shortlisted',color:'#10b981'},{id:'rejected',label:'Rejected',color:'#ef4444'}];
+const JOBAPP_STATUSES = [{id:'new',label:'New',color:'#f59e0b'},{id:'reviewing',label:'Reviewing',color:'#6366f1'},{id:'shortlisted',label:'Shortlisted',color:'#8b5cf6'},{id:'interviewing',label:'Interviewing',color:'#06b6d4'},{id:'hired',label:'Hired',color:'#10b981'},{id:'rejected',label:'Rejected',color:'#ef4444'}];
+const AI_STATUSES = [{id:'new',label:'New',color:'#f59e0b'},{id:'contacted',label:'Contacted',color:'#6366f1'},{id:'qualified',label:'Qualified',color:'#10b981'},{id:'closed',label:'Closed',color:'#94a3b8'}];
+
+function renderContactSubmissions() {
+  const items = state.contactSubmissions;
+  return `
+  <div class="page-header">
+    <div class="page-title">Contact Submissions</div>
+    <div class="page-sub">${items.length} inquiries from the website contact form</div>
+  </div>
+  <div class="rec-cands-list">
+    ${items.length === 0 ? '<div class="social-empty">No contact form submissions yet.</div>' : ''}
+    ${items.map(s => submissionCard(s, {
+      table: 'contact_submissions', idPrefix: 'contact-', statusOptions: CONTACT_STATUSES,
+      extraFields: [{key:'company',label:'Company'}],
+      renderDetail: (s) => `
+        ${s.service_interest?.length ? `<div style="margin-bottom:10px"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">Interested in:</span> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${s.service_interest.map(i=>`<span class="rec-tag">${i}</span>`).join('')}</div></div>` : ''}
+        ${s.message ? `<div style="font-size:13px;color:var(--text-2);line-height:1.7;background:var(--bg-2);padding:12px 14px;border-radius:8px">${s.message}</div>` : ''}
+      `,
+    })).join('')}
+  </div>`;
+}
+
+function renderGeneralCVs() {
+  const items = state.generalCVs;
+  return `
+  <div class="page-header">
+    <div class="page-title">General CVs</div>
+    <div class="page-sub">${items.length} open applications (no specific role)</div>
+  </div>
+  <div class="rec-cands-list">
+    ${items.length === 0 ? '<div class="social-empty">No general CV submissions yet.</div>' : ''}
+    ${items.map(s => submissionCard(s, {
+      table: 'general_cv_submissions', idPrefix: 'cv-', statusOptions: CV_STATUSES,
+      extraFields: [{key:'current_title',label:'Current Role'},{key:'current_company',label:'Company'},{key:'location',label:'Location'}],
+      renderDetail: (s) => `
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : ''}
+          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : ''}
+        </div>
+      `,
+    })).join('')}
+  </div>`;
+}
+
+function renderJobApplications() {
+  const filtered = state.jobAppFilter === 'all' ? state.jobApplications : state.jobApplications.filter(j => j.position_title === state.jobAppFilter);
+  const positions = [...new Set(state.jobApplications.map(j => j.position_title))];
+  return `
+  <div class="page-header">
+    <div class="page-title">Job Applications</div>
+    <div class="page-sub">${state.jobApplications.length} applications for specific roles</div>
+  </div>
+  <div class="stage-bar">
+    <div class="stage-chip ${state.jobAppFilter==='all'?'active':''}" data-jobapp-filter="all">All (${state.jobApplications.length})</div>
+    ${positions.map(p => `<div class="stage-chip ${state.jobAppFilter===p?'active':''}" data-jobapp-filter="${p}">${p} (${state.jobApplications.filter(j=>j.position_title===p).length})</div>`).join('')}
+  </div>
+  <div class="rec-cands-list">
+    ${filtered.length === 0 ? '<div class="social-empty">No job applications yet.</div>' : ''}
+    ${filtered.map(s => submissionCard(s, {
+      table: 'job_applications', idPrefix: 'job-', statusOptions: JOBAPP_STATUSES,
+      extraFields: [{key:'position_title',label:'Applied for'},{key:'current_title',label:'Current Role'},{key:'location',label:'Location'},{key:'expected_salary',label:'Expected Salary'}],
+      renderDetail: (s) => `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;font-size:12px;color:var(--text-2)">
+          <div>Employment: <strong>${s.employment_status||'—'}</strong></div>
+          <div>Current Salary: <strong>${s.current_salary||'—'}</strong></div>
+          <div>Open to Relocation: <strong>${s.open_to_relocation||'—'}</strong></div>
+          <div>Open to Remote: <strong>${s.open_to_remote||'—'}</strong></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : ''}
+          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : ''}
+        </div>
+      `,
+    })).join('')}
+  </div>`;
+}
+
+function renderAIAssessments() {
+  const items = state.aiAssessments;
+  const avgScore = items.length ? (items.reduce((s,a)=>s+(a.overall_score||0),0)/items.length).toFixed(1) : 0;
+  return `
+  <div class="page-header">
+    <div class="page-title">AI Readiness Assessments</div>
+    <div class="page-sub">${items.length} completed · avg score ${avgScore}</div>
+  </div>
+  <div class="rec-cands-list">
+    ${items.length === 0 ? '<div class="social-empty">No AI assessment submissions yet.</div>' : ''}
+    ${items.map(s => submissionCard(s, {
+      table: 'ai_assessments', idPrefix: 'ai-', statusOptions: AI_STATUSES,
+      extraFields: [{key:'company',label:'Company'},{key:'overall_grade',label:'Grade'}],
+      renderDetail: (s) => `
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+          <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:var(--accent)">${s.overall_score||0}</div>
+          <div style="font-size:13px;color:var(--text-2)">Overall Score ${s.overall_grade?'· Grade '+s.overall_grade:''}</div>
+        </div>
+        ${s.category_scores && Object.keys(s.category_scores).length ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${Object.entries(s.category_scores).map(([cat,score]) => `
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-2);border-radius:6px;font-size:12px">
+              <span style="color:var(--text-2)">${cat}</span><span style="font-weight:700;color:var(--accent)">${score}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      `,
+    })).join('')}
+  </div>`;
+}
+
 // ── Notification Panel ───────────────────────────────────────────────
 function renderNotifPanel() {
   if (!state.showNotifPanel) return '';
@@ -1499,6 +1656,10 @@ function renderSidebar() {
     {id:'analytics',      icon:'📊', label:'Analytics', section:'crm'},
     {id:'agents',         icon:'🤖', label:'AI Agents', section:'crm'},
     {id:'map',            icon:'🕸️', label:'Relationship Map', section:'crm'},
+    {id:'contact-subs',   icon:'✉️', label:'Contact Submissions', section:'website'},
+    {id:'general-cvs',    icon:'📄', label:'General CVs', section:'website'},
+    {id:'job-apps',       icon:'💼', label:'Job Applications', section:'website'},
+    {id:'ai-assessments', icon:'🧠', label:'AI Assessments', section:'website'},
     {id:'pipeline',       icon:'◈', label:'Pipeline', section:'sales'},
     {id:'recruiting',     icon:'⬡', label:'Recruiting', section:'sales'},
     {id:'social',         icon:'✦', label:'Content Engine', section:'tools'},
@@ -1520,6 +1681,11 @@ function renderSidebar() {
     </div>
     <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:8px 12px 4px">CRM</div></div>
     ${navItems.filter(n=>n.section==='crm').map(n=>`
+      <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
+        <span class="nav-icon">${n.icon}</span>${n.label}
+      </div>`).join('')}
+    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Website Forms</div></div>
+    ${navItems.filter(n=>n.section==='website').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
       </div>`).join('')}
@@ -2061,6 +2227,10 @@ function renderView() {
   if (state.view==='analytics')       return renderAnalyticsView();
   if (state.view==='agents')          return renderAgentsView();
   if (state.view==='map')             return renderMapView();
+  if (state.view==='contact-subs')    return renderContactSubmissions();
+  if (state.view==='general-cvs')     return renderGeneralCVs();
+  if (state.view==='job-apps')        return renderJobApplications();
+  if (state.view==='ai-assessments')  return renderAIAssessments();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -2381,6 +2551,10 @@ function attachEvents() {
         const g = buildGraph({ leads: state.leads, projects: state.projects, team: state.team, positions, candidates });
         state.mapNodes = g.nodes; state.mapEdges = g.edges;
       }
+      if (el.dataset.nav === 'contact-subs') state.contactSubmissions = await fetchContactSubmissions();
+      if (el.dataset.nav === 'general-cvs') state.generalCVs = await fetchGeneralCVs();
+      if (el.dataset.nav === 'job-apps') state.jobApplications = await fetchJobApplications();
+      if (el.dataset.nav === 'ai-assessments') state.aiAssessments = await fetchAIAssessments();
       render();
     });
   });
@@ -2529,6 +2703,7 @@ function attachEvents() {
   attachAnalyticsEvents();
   attachAgentEvents();
   attachMapEvents();
+  attachSubmissionEvents();
 
   // Theme toggle
   document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
@@ -3164,6 +3339,34 @@ function attachAnalyticsEvents() {
     if (state.googleConnected) await fetchGAData(from, to);
     showToast(`Showing ${days} days of data`, 'success');
     render();
+  });
+}
+
+// ── Website Submissions Events ──────────────────────────────────────
+function attachSubmissionEvents() {
+  document.querySelectorAll('[data-toggle-submission]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.toggleSubmission;
+      state.expandedSubmission = state.expandedSubmission === id ? null : id;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-jobapp-filter]').forEach(el => {
+    el.addEventListener('click', () => { state.jobAppFilter = el.dataset.jobappFilter; render(); });
+  });
+  document.querySelectorAll('[data-submission-status]').forEach(el => {
+    el.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const table = el.dataset.submissionTable;
+      const id = el.dataset.submissionStatus.split('-').slice(1).join('-');
+      const newStatus = el.value;
+      if (table === 'contact_submissions') { await updateContactStatus(id, newStatus); state.contactSubmissions = await fetchContactSubmissions(); }
+      if (table === 'general_cv_submissions') { await updateGeneralCVStatus(id, newStatus); state.generalCVs = await fetchGeneralCVs(); }
+      if (table === 'job_applications') { await updateJobApplicationStatus(id, newStatus); state.jobApplications = await fetchJobApplications(); }
+      if (table === 'ai_assessments') { await updateAIAssessmentStatus(id, newStatus); state.aiAssessments = await fetchAIAssessments(); }
+      showToast('Status updated', 'success');
+      render();
+    });
   });
 }
 
