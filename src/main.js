@@ -1147,9 +1147,9 @@ function renderGeneralCVs() {
       table: 'general_cv_submissions', idPrefix: 'cv-', statusOptions: CV_STATUSES,
       extraFields: [{key:'current_title',label:'Current Role'},{key:'current_company',label:'Company'},{key:'location',label:'Location'}],
       renderDetail: (s) => `
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : ''}
-          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : `<span style="font-size:11px;color:var(--text-3)">No LinkedIn provided</span>`}
+          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : `<span style="font-size:11px;color:var(--red)">⚠ No resume attached</span>`}
         </div>
       `,
     })).join('')}
@@ -1172,17 +1172,19 @@ function renderJobApplications() {
     ${filtered.length === 0 ? '<div class="social-empty">No job applications yet.</div>' : ''}
     ${filtered.map(s => submissionCard(s, {
       table: 'job_applications', idPrefix: 'job-', statusOptions: JOBAPP_STATUSES,
-      extraFields: [{key:'position_title',label:'Applied for'},{key:'current_title',label:'Current Role'},{key:'location',label:'Location'},{key:'expected_salary',label:'Expected Salary'}],
+      extraFields: [{key:'position_title',label:'Applied for'},{key:'current_title',label:'Current Role'},{key:'current_company',label:'Current Company'},{key:'location',label:'Location'},{key:'expected_salary',label:'Expected Salary'}],
       renderDetail: (s) => `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;font-size:12px;color:var(--text-2)">
-          <div>Employment: <strong>${s.employment_status||'—'}</strong></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;font-size:12px;color:var(--text-2)">
+          <div>Employment Status: <strong>${s.employment_status||'—'}</strong></div>
           <div>Current Salary: <strong>${s.current_salary||'—'}</strong></div>
           <div>Open to Relocation: <strong>${s.open_to_relocation||'—'}</strong></div>
           <div>Open to Remote: <strong>${s.open_to_remote||'—'}</strong></div>
+          <div>Current Company: <strong>${s.current_company||'—'}</strong></div>
+          <div>Current Title: <strong>${s.current_title||'—'}</strong></div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : ''}
-          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : `<span style="font-size:11px;color:var(--text-3)">No LinkedIn provided</span>`}
+          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : `<span style="font-size:11px;color:var(--red)">⚠ No resume attached</span>`}
         </div>
       `,
     })).join('')}
