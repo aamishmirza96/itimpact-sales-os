@@ -12,7 +12,7 @@ import { fetchArticles, createArticle, updateArticle, deleteArticle } from './ar
 import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost } from './social-planner.js';
 import { fetchNotifications, getUnreadCount, markAsRead, markAllRead, sendNotification, subscribeToNotifications } from './notifications.js';
 import { fetchAnalyticsOverview } from './analytics.js';
-import { getApiKey, getProvider, setApiKey, clearApiKey, hasApiKey, runMarketingPlannerAgent, runLeadFinderAgent, runHRHeadhunterAgent, runChatAssistant } from './ai-agents.js';
+import { getApiKey, getProvider, setApiKey, clearApiKey, hasApiKey, runMarketingPlannerAgent, runLeadFinderAgent, runHRHeadhunterAgent, runChatAssistant, runJarvis } from './ai-agents.js';
 import { buildGraph, NODE_TYPE_LABELS } from './relationship-map.js';
 import {
   fetchProjects, createProject, fetchProjectMembers, addProjectMember,
@@ -784,7 +784,7 @@ const AGENTS = [
   { id: 'marketing', name: 'Marketing Planner', icon: '📣', color: '#ec4899', desc: 'Plans LinkedIn, Instagram & Facebook content for the week' },
   { id: 'leadfinder', name: 'Lead Finder', icon: '🎯', color: '#f59e0b', desc: 'Suggests new lead targets, titles, and outreach angles' },
   { id: 'headhunter', name: 'HR Headhunter', icon: '🕵️', color: '#10b981', desc: 'Finds boolean search strings and sourcing strategy for open roles' },
-  { id: 'chat', name: 'Chat Assistant', icon: '💬', color: '#a855f7', desc: 'Ask anything about your leads, pipeline, projects or team' },
+  { id: 'chat', name: 'Jarvis', icon: '✨', color: '#a855f7', desc: 'Your agentic assistant — ask questions or tell it to take action (add leads, update status, start projects)' },
 ];
 
 function renderAgentsView() {
@@ -930,13 +930,29 @@ function renderMapView() {
     <div class="page-sub">${nodes.length} nodes · ${edges.length} connections — drag nodes, click to inspect</div>
   </div>
   <div style="display:grid;grid-template-columns:${selected ? '1fr 320px' : '1fr'};gap:16px">
-    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-card);position:relative">
+    <div style="background:radial-gradient(ellipse at center, #161229 0%, #0c0a18 100%);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-card);position:relative">
       <svg id="map-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:640px;display:block;cursor:grab">
+        <defs>
+          <filter id="node-glow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <linearGradient id="edge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#a855f7" stop-opacity="0.1" />
+            <stop offset="50%" stop-color="#22d3ee" stop-opacity="0.5" />
+            <stop offset="100%" stop-color="#a855f7" stop-opacity="0.1" />
+          </linearGradient>
+        </defs>
+        <g id="map-stars">
+          ${Array.from({length:40}).map(() => `<circle cx="${Math.random()*W}" cy="${Math.random()*H}" r="${Math.random()*1.2}" fill="#fff" opacity="${0.15+Math.random()*0.25}"><animate attributeName="opacity" values="${0.1};${0.4};${0.1}" dur="${2+Math.random()*3}s" repeatCount="indefinite" /></circle>`).join('')}
+        </g>
         <g id="map-edges">
-          ${edges.map(e => {
+          ${edges.map((e,i) => {
             const f = positions[e.from], t = positions[e.to];
             if (!f || !t) return '';
-            return `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="var(--border)" stroke-width="1.5" />`;
+            return `<line data-edge-i="${i}" x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="url(#edge-grad)" stroke-width="1.5">
+              <animate attributeName="stroke-opacity" values="0.3;1;0.3" dur="${2.5+Math.random()*2}s" repeatCount="indefinite" />
+            </line>`;
           }).join('')}
         </g>
         <g id="map-nodes">
@@ -944,18 +960,23 @@ function renderMapView() {
             const p = positions[n.id] || { x: W/2, y: H/2 };
             const r = 14 * (n.size || 1);
             const isSelected = state.mapSelectedNode === n.id;
+            const dur = (3 + Math.random()*2.5).toFixed(2);
             return `
             <g class="map-node" data-node-id="${n.id}" style="cursor:pointer" transform="translate(${p.x},${p.y})">
-              <circle r="${r}" fill="${n.color}" opacity="${isSelected?1:0.85}" stroke="${isSelected?'#fff':'none'}" stroke-width="3" />
-              <text y="${r + 16}" text-anchor="middle" font-size="11" font-family="DM Mono, monospace" fill="var(--text-2)">${escHtml((n.label||'').substring(0,18))}</text>
+              <animateTransform attributeName="transform" type="translate" additive="sum" values="0,0; ${(Math.random()*8-4).toFixed(1)},${(Math.random()*8-4).toFixed(1)}; 0,0" dur="${dur}s" repeatCount="indefinite" />
+              <circle r="${r+5}" fill="${n.color}" opacity="0.18" filter="url(#node-glow)">
+                <animate attributeName="r" values="${r+3};${r+9};${r+3}" dur="${(2+Math.random()).toFixed(2)}s" repeatCount="indefinite" />
+              </circle>
+              <circle r="${r}" fill="${n.color}" opacity="${isSelected?1:0.92}" stroke="${isSelected?'#fff':'rgba(255,255,255,0.3)'}" stroke-width="${isSelected?3:1}" filter="url(#node-glow)" />
+              <text y="${r + 17}" text-anchor="middle" font-size="11" font-family="DM Mono, monospace" fill="#cfc8ee">${escHtml((n.label||'').substring(0,18))}</text>
             </g>`;
           }).join('')}
         </g>
       </svg>
-      <div style="position:absolute;bottom:16px;left:16px;display:flex;gap:10px;flex-wrap:wrap;background:var(--bg-1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+      <div style="position:absolute;bottom:16px;left:16px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(15,12,30,0.85);backdrop-filter:blur(8px);padding:8px 12px;border-radius:8px;border:1px solid var(--glass-border)">
         ${Object.entries(NODE_TYPE_LABELS).map(([type, label]) => {
           const colorMap = { lead:'#f59e0b', project:'#3b82f6', team:'#a855f7', position:'#10b981', candidate:'#ec4899' };
-          return `<div style="display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block"></span>${label}</div>`;
+          return `<div style="display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:#cfc8ee"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block;box-shadow:0 0 6px ${colorMap[type]}"></span>${label}</div>`;
         }).join('')}
       </div>
     </div>
@@ -3108,10 +3129,23 @@ function attachAgentEvents() {
     state.agentLoading = true;
     e.target.reset();
     render();
-    const ctx = `Leads: ${state.leads.length} (${state.leads.slice(0,5).map(l=>l.name+' @ '+l.company).join('; ')}). Projects: ${state.projects.length}. Prospects: ${prospects.length}.`;
+    if (state.leads.length === 0) state.leads = await fetchLeads();
+    if (state.projects.length === 0) state.projects = await fetchProjects();
+    const ctx = `Leads (${state.leads.length}): ${state.leads.slice(0,8).map(l=>l.name+' @ '+(l.company||'?')+' ['+l.status+']').join('; ')}. Projects (${state.projects.length}): ${state.projects.map(p=>p.name).join(', ')}. Sales prospects: ${prospects.length}.`;
     try {
-      const answer = await runChatAssistant(q, ctx);
-      state.chatHistory.push({ role: 'assistant', content: answer });
+      const history = state.chatHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+      const result = await runJarvis(q, ctx, history);
+      if (result.type === 'tool_calls') {
+        const summaries = [];
+        for (const call of result.calls) {
+          summaries.push(await executeJarvisAction(call));
+        }
+        state.chatHistory.push({ role: 'assistant', content: summaries.join('\n') });
+        state.leads = await fetchLeads();
+        state.projects = await fetchProjects();
+      } else {
+        state.chatHistory.push({ role: 'assistant', content: result.content });
+      }
     } catch (err) {
       state.chatHistory.push({ role: 'assistant', content: 'Error: ' + err.message });
     }
@@ -3119,6 +3153,28 @@ function attachAgentEvents() {
     render();
     setTimeout(() => { const el = document.getElementById('chat-agent-messages'); if (el) el.scrollTop = el.scrollHeight; }, 50);
   });
+}
+
+async function executeJarvisAction(call) {
+  try {
+    if (call.name === 'create_lead') {
+      await createLead({ name: call.args.name, company: call.args.company||'', email: call.args.email||'', value: call.args.value||0, notes: call.args.notes||'' });
+      return `✅ Created lead "${call.args.name}"${call.args.company ? ' at '+call.args.company : ''}`;
+    }
+    if (call.name === 'update_lead_status') {
+      const lead = state.leads.find(l => l.name.toLowerCase().includes(call.args.lead_name.toLowerCase()));
+      if (!lead) return `⚠ Couldn't find a lead matching "${call.args.lead_name}"`;
+      await updateLead(lead.id, { status: call.args.status });
+      return `✅ Updated "${lead.name}" to status: ${call.args.status}`;
+    }
+    if (call.name === 'create_project') {
+      await createProject(call.args.name, call.args.description || '');
+      return `✅ Created project "${call.args.name}"`;
+    }
+    return `Did nothing (${call.name})`;
+  } catch (err) {
+    return `❌ Action failed: ${err.message}`;
+  }
 }
 
 function attachApiKeyModalEvents() {
