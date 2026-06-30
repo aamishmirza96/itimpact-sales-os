@@ -51,7 +51,7 @@
 }
 
 html, body { height: 100%; background: var(--bg); color: var(--text); }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 450; font-size: 15px; line-height: 1.55; display: flex; overflow: hidden; }
+body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 600; font-size: 15px; line-height: 1.55; display: flex; overflow: hidden; }
 #app { display: flex; width: 100%; height: 100vh; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -65,7 +65,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font
 .sidebar-brand .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; color: var(--text); }
 .sidebar-brand .logo span { color: var(--accent); }
 .sidebar-brand .sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); margin-top: 3px; letter-spacing: 0.08em; text-transform: uppercase; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; cursor: pointer; transition: all 0.2s; color: var(--text-3); font-size: 14px; font-weight: 500; user-select: none; position: relative; margin: 1px 10px; border-radius: var(--radius-sm); }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; cursor: pointer; transition: all 0.2s; color: var(--text-3); font-size: 14px; font-weight: 600; user-select: none; position: relative; margin: 1px 10px; border-radius: var(--radius-sm); }
 .nav-item:hover { background: var(--accent-glow); color: var(--text-2); }
 .nav-item.active { color: var(--accent); background: var(--accent-light); font-weight: 700; }
 .nav-item.active::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
@@ -141,7 +141,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font
 .prospect-name { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; }
 .star { color: var(--amber); font-size: 11px; }
 .prospect-title { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-.company-name { font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+.company-name { font-size: 13px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
 .sector-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--bg-2); color: var(--text-3); white-space: nowrap; }
 .source-badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; white-space: nowrap; }
 .source-badge.apollo { background: var(--accent-light); color: var(--accent); }
