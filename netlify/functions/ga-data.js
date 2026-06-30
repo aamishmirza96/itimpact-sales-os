@@ -35,9 +35,10 @@ export default async (req) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
       body: JSON.stringify({
         dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
-        dimensions: [{ name: 'date' }, { name: 'pagePath' }],
+        dimensions: [{ name: 'pagePath' }],
         metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }, { name: 'averageSessionDuration' }, { name: 'sessions' }],
-        limit: 200,
+        orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+        limit: 50,
       }),
     });
     const report = await reportRes.json();

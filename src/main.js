@@ -753,7 +753,7 @@ function renderAnalyticsView() {
       <tbody>
         ${(state.gaData.rows||[]).slice(0,12).map(r => `
           <tr style="border-top:1px solid var(--border-subtle)">
-            <td style="padding:8px 0;color:var(--text-2)">${r.dimensionValues[1]?.value || '/'}</td>
+            <td style="padding:8px 0;color:var(--text-2)">${r.dimensionValues[0]?.value || '/'}</td>
             <td style="text-align:right;color:var(--accent);font-weight:600">${r.metricValues[0]?.value || 0}</td>
             <td style="text-align:right;color:var(--text-2)">${r.metricValues[1]?.value || 0}</td>
             <td style="text-align:right;color:var(--text-3);font-family:'DM Mono',monospace">${Math.round(r.metricValues[2]?.value || 0)}s</td>
