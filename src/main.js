@@ -1219,6 +1219,40 @@ function renderAIAssessments() {
   </div>`;
 }
 
+function renderFilesView() {
+  const cvFiles = state.generalCVs.filter(c => c.resume_url).map(c => ({ ...c, source: 'General CV', sourceColor: '#8b5cf6' }));
+  const jobFiles = state.jobApplications.filter(j => j.resume_url).map(j => ({ ...j, source: j.position_title || 'Job Application', sourceColor: '#06b6d4' }));
+  const allFiles = [...cvFiles, ...jobFiles].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  return `
+  <div class="page-header">
+    <div class="page-title">Files / Resumes</div>
+    <div class="page-sub">${allFiles.length} resume${allFiles.length===1?'':'s'} uploaded from website forms</div>
+  </div>
+  <div class="rec-cands-list">
+    ${allFiles.length === 0 ? '<div class="social-empty">No resumes uploaded yet. Resumes will appear here once the website forms are submitted.</div>' : ''}
+    ${allFiles.map(f => `
+      <div class="rec-cand-card">
+        <div class="rec-cand-avatar" style="background:linear-gradient(135deg,${f.sourceColor},${f.sourceColor}cc)">📄</div>
+        <div class="rec-cand-body">
+          <div class="rec-cand-top">
+            <div>
+              <div class="rec-cand-name">${f.full_name}</div>
+              <div class="rec-cand-role">${f.email}${f.current_title?' · '+f.current_title:''}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:4px">
+                <span style="background:${f.sourceColor}1a;color:${f.sourceColor};padding:2px 8px;border-radius:4px">${f.source}</span>
+                · ${new Date(f.created_at).toLocaleDateString()}
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <a href="${f.resume_url}" target="_blank" rel="noopener" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;white-space:nowrap">⬇ Download</a>
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
 // ── Notification Panel ───────────────────────────────────────────────
 function renderNotifPanel() {
   if (!state.showNotifPanel) return '';
@@ -1672,6 +1706,7 @@ function renderSidebar() {
     {id:'general-cvs',    icon:'📄', label:'General CVs', section:'website'},
     {id:'job-apps',       icon:'💼', label:'Job Applications', section:'website'},
     {id:'ai-assessments', icon:'🧠', label:'AI Assessments', section:'website'},
+    {id:'files',          icon:'📁', label:'Files / Resumes', section:'website'},
     {id:'pipeline',       icon:'◈', label:'Pipeline', section:'sales'},
     {id:'recruiting',     icon:'⬡', label:'Recruiting', section:'sales'},
     {id:'social',         icon:'✦', label:'Content Engine', section:'tools'},
@@ -2243,6 +2278,7 @@ function renderView() {
   if (state.view==='general-cvs')     return renderGeneralCVs();
   if (state.view==='job-apps')        return renderJobApplications();
   if (state.view==='ai-assessments')  return renderAIAssessments();
+  if (state.view==='files')           return renderFilesView();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -2567,6 +2603,10 @@ function attachEvents() {
       if (el.dataset.nav === 'general-cvs') state.generalCVs = await fetchGeneralCVs();
       if (el.dataset.nav === 'job-apps') state.jobApplications = await fetchJobApplications();
       if (el.dataset.nav === 'ai-assessments') state.aiAssessments = await fetchAIAssessments();
+      if (el.dataset.nav === 'files') {
+        state.generalCVs = await fetchGeneralCVs();
+        state.jobApplications = await fetchJobApplications();
+      }
       render();
     });
   });
