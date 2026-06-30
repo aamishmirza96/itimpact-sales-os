@@ -123,6 +123,8 @@ const state = {
   // Analytics
   analyticsData: null,
   analyticsDays: 7,
+  googleConnected: localStorage.getItem('google_connected') === '1',
+  gaData: null,
   // Agents
   activeAgent: null,
   agentLoading: false,
@@ -708,6 +710,10 @@ function renderAnalyticsView() {
   const avgPages = d.totalSessions?.length ? (d.totalSessions.reduce((s,x) => s + (x.pages_viewed||0), 0) / d.totalSessions.length).toFixed(1) : '0';
   const devices = {};
   (d.totalSessions||[]).forEach(s => { const dev = s.device || 'unknown'; devices[dev] = (devices[dev]||0)+1; });
+  const urlParams = new URLSearchParams(location.search);
+  const googleConnected = urlParams.get('google_connected') === '1' || state.googleConnected;
+  const googleError = urlParams.get('google_error');
+
   return `
   <div class="page-header pipe-header">
     <div>
@@ -724,6 +730,37 @@ function renderAnalyticsView() {
       </div>
     </div>
   </div>
+
+  ${googleError ? `<div style="padding:12px 16px;background:var(--red-light);border-radius:8px;color:var(--red);font-size:12px;margin-bottom:16px">Google connection error: ${escHtml(googleError)}</div>` : ''}
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${googleConnected?'var(--green-light)':'var(--bg-1)'};border:1px solid ${googleConnected?'rgba(16,185,129,0.25)':'var(--border)'};border-radius:var(--radius);margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:22px">🔗</div>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--text)">Google Analytics ${googleConnected ? '— Connected ✓' : '— Not Connected'}</div>
+        <div style="font-size:11px;color:var(--text-3)">${googleConnected ? 'Pulling real GA4 data alongside our custom tracker' : 'Connect to see official Google Analytics data'}</div>
+      </div>
+    </div>
+    ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Refresh GA Data</button>`}
+  </div>
+
+  ${state.gaData ? `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px">
+    <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
+    ${state.gaData.error ? `<div style="color:var(--red);font-size:12px">${state.gaData.error}</div>` : `
+    <table style="width:100%;font-size:12px">
+      <thead><tr style="color:var(--text-3);font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
+      <tbody>
+        ${(state.gaData.rows||[]).slice(0,12).map(r => `
+          <tr style="border-top:1px solid var(--border-subtle)">
+            <td style="padding:8px 0;color:var(--text-2)">${r.dimensionValues[1]?.value || '/'}</td>
+            <td style="text-align:right;color:var(--accent);font-weight:600">${r.metricValues[0]?.value || 0}</td>
+            <td style="text-align:right;color:var(--text-2)">${r.metricValues[1]?.value || 0}</td>
+            <td style="text-align:right;color:var(--text-3);font-family:'DM Mono',monospace">${Math.round(r.metricValues[2]?.value || 0)}s</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`}
+  </div>` : ''}
 
   <div class="metrics-row" style="grid-template-columns:repeat(5,1fr)">
     <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-value">${d.sessions}</div><div class="metric-sub">unique visitors</div></div>
@@ -2301,6 +2338,7 @@ function attachEvents() {
       }
       if (el.dataset.nav === 'analytics') {
         state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
+        if (state.googleConnected) await fetchGAData();
       }
       if (el.dataset.nav === 'agents') {
         state.activeAgent = null; state.agentOutput = ''; state.agentError = null;
@@ -3072,6 +3110,17 @@ function attachAnalyticsEvents() {
       render();
     });
   });
+  document.getElementById('btn-connect-google')?.addEventListener('click', () => {
+    const clientId = '557532595072-k4218aj9elu93lmoehoao1qv2shvrq9q.apps.googleusercontent.com';
+    const redirectUri = `${location.origin}/.netlify/functions/google-oauth-callback`;
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    location.href = authUrl;
+  });
+  document.getElementById('btn-refresh-ga')?.addEventListener('click', async () => {
+    await fetchGAData();
+    render();
+  });
   document.getElementById('btn-analytics-custom')?.addEventListener('click', async () => {
     const from = document.getElementById('analytics-from')?.value;
     const to = document.getElementById('analytics-to')?.value;
@@ -3107,7 +3156,12 @@ function attachAgentEvents() {
     try {
       let output;
       if (state.activeAgent === 'marketing') output = await runMarketingPlannerAgent(input);
-      else if (state.activeAgent === 'leadfinder') output = await runLeadFinderAgent(input, state.leads.map(l=>l.company).join(', '));
+      else if (state.activeAgent === 'leadfinder') {
+        const sectorCounts = {};
+        prospects.forEach(p => { sectorCounts[p.sector] = (sectorCounts[p.sector]||0)+1; });
+        const existingSummary = `Sales pipeline (${prospects.length} prospects): ${Object.entries(sectorCounts).map(([s,c])=>`${s} (${c})`).join(', ')}. Sample companies: ${prospects.slice(0,10).map(p=>p.company).join(', ')}. CRM leads (${state.leads.length}): ${state.leads.map(l=>l.company).filter(Boolean).join(', ')}. ICP: ${JSON.stringify(icpProfile).substring(0,500)}`;
+        output = await runLeadFinderAgent(input, existingSummary);
+      }
       else if (state.activeAgent === 'headhunter') output = await runHRHeadhunterAgent(input);
       state.agentOutput = output;
     } catch (err) {
@@ -3153,6 +3207,16 @@ function attachAgentEvents() {
     render();
     setTimeout(() => { const el = document.getElementById('chat-agent-messages'); if (el) el.scrollTop = el.scrollHeight; }, 50);
   });
+}
+
+async function fetchGAData() {
+  try {
+    const res = await fetch('/.netlify/functions/ga-data');
+    const data = await res.json();
+    state.gaData = data;
+  } catch (err) {
+    state.gaData = { error: err.message };
+  }
 }
 
 async function executeJarvisAction(call) {
@@ -3281,6 +3345,13 @@ function scrollChatToBottom() {
 
 // ── Boot ──────────────────────────────────────────────────────────────
 async function boot() {
+  // Handle Google OAuth redirect
+  const params = new URLSearchParams(location.search);
+  if (params.get('google_connected') === '1') {
+    localStorage.setItem('google_connected', '1');
+    window.history.replaceState({}, '', location.pathname);
+  }
+
   // Apply saved theme
   if (state.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
 
