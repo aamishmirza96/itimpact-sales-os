@@ -12,6 +12,8 @@ import { fetchArticles, createArticle, updateArticle, deleteArticle } from './ar
 import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost } from './social-planner.js';
 import { fetchNotifications, getUnreadCount, markAsRead, markAllRead, sendNotification, subscribeToNotifications } from './notifications.js';
 import { fetchAnalyticsOverview } from './analytics.js';
+import { getApiKey, getProvider, setApiKey, clearApiKey, hasApiKey, runMarketingPlannerAgent, runLeadFinderAgent, runHRHeadhunterAgent, runChatAssistant } from './ai-agents.js';
+import { buildGraph, NODE_TYPE_LABELS } from './relationship-map.js';
 import {
   fetchProjects, createProject, fetchProjectMembers, addProjectMember,
   fetchMessages, createMessage, fetchComments, createComment,
@@ -121,6 +123,19 @@ const state = {
   // Analytics
   analyticsData: null,
   analyticsDays: 7,
+  // Agents
+  activeAgent: null,
+  agentLoading: false,
+  agentOutput: '',
+  agentError: null,
+  agentInput: '',
+  chatHistory: [],
+  showApiKeyModal: false,
+  // Map
+  mapNodes: [],
+  mapEdges: [],
+  mapSelectedNode: null,
+  mapPositions: {},
   generatedPost: null,
   recTab: 'positions',
   recPosition: null,
@@ -764,6 +779,198 @@ function renderAnalyticsView() {
   </div>`;
 }
 
+// ── AI Agents View ───────────────────────────────────────────────────
+const AGENTS = [
+  { id: 'marketing', name: 'Marketing Planner', icon: '📣', color: '#ec4899', desc: 'Plans LinkedIn, Instagram & Facebook content for the week' },
+  { id: 'leadfinder', name: 'Lead Finder', icon: '🎯', color: '#f59e0b', desc: 'Suggests new lead targets, titles, and outreach angles' },
+  { id: 'headhunter', name: 'HR Headhunter', icon: '🕵️', color: '#10b981', desc: 'Finds boolean search strings and sourcing strategy for open roles' },
+  { id: 'chat', name: 'Chat Assistant', icon: '💬', color: '#a855f7', desc: 'Ask anything about your leads, pipeline, projects or team' },
+];
+
+function renderAgentsView() {
+  if (state.activeAgent) return renderAgentDetail();
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">AI Agents</div>
+      <div class="page-sub">${hasApiKey() ? `Connected · ${getProvider()}` : 'No API key configured'}</div>
+    </div>
+    <button class="find-leads-btn" id="btn-agent-settings">⚙ ${hasApiKey() ? 'Manage API Key' : 'Connect API Key'}</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+    ${AGENTS.map(a => `
+      <div class="rec-pos-card" style="cursor:pointer;padding:24px" data-open-agent="${a.id}">
+        <div style="width:52px;height:52px;border-radius:14px;background:${a.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">${a.icon}</div>
+        <div style="font-family:Syne,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
+        <div style="font-size:13px;color:var(--text-2);line-height:1.6">${a.desc}</div>
+        <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderAgentDetail() {
+  const a = AGENTS.find(x => x.id === state.activeAgent);
+  return `
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button id="btn-back-agents" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">← Back</button>
+      <div class="page-title">${a.icon} ${a.name}</div>
+    </div>
+    <div class="page-sub">${a.desc}</div>
+  </div>
+
+  ${!hasApiKey() ? `
+  <div style="padding:24px;background:var(--amber-light);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius);margin-bottom:20px">
+    <div style="font-weight:700;font-size:14px;color:#b45309;margin-bottom:8px">No API Key Connected</div>
+    <div style="font-size:13px;color:var(--text-2);margin-bottom:14px">This agent needs an OpenAI or Anthropic API key to run. Your key is stored only in your browser.</div>
+    <button class="find-leads-btn" id="btn-agent-settings-2">Connect API Key</button>
+  </div>` : ''}
+
+  ${a.id === 'chat' ? renderChatAgentUI() : renderTaskAgentUI(a)}
+  `;
+}
+
+function renderTaskAgentUI(a) {
+  return `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-card)">
+    <label style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
+      ${a.id==='marketing' ? 'Context (audience, focus, recent wins, etc.)' : a.id==='leadfinder' ? 'Target context (industry, ICP details)' : 'Position details (title, requirements, seniority)'}
+    </label>
+    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Inter,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
+    <button id="btn-run-agent" class="find-leads-btn" ${state.agentLoading?'disabled':''} style="background:${a.color}">
+      ${state.agentLoading ? '⏳ Thinking...' : '✨ Run Agent'}
+    </button>
+    ${state.agentError ? `<div style="margin-top:14px;padding:12px 16px;background:var(--red-light);border-radius:8px;color:var(--red);font-size:12px">${state.agentError}</div>` : ''}
+  </div>
+  ${state.agentOutput ? `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:16px;box-shadow:var(--shadow-card)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
+      <button class="copy-btn" id="btn-copy-agent-output">Copy</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-2);line-height:1.8;white-space:pre-wrap">${escHtml(state.agentOutput)}</div>
+  </div>` : ''}`;
+}
+
+function renderChatAgentUI() {
+  return `
+  <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 320px);box-shadow:var(--shadow-card)">
+    <div id="chat-agent-messages" style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+      ${state.chatHistory.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:13px">Ask me anything about your leads, pipeline, projects, or team.</div>' : ''}
+      ${state.chatHistory.map(m => `
+        <div style="display:flex;${m.role==='user'?'justify-content:flex-end':''}">
+          <div style="max-width:75%;padding:12px 16px;border-radius:14px;background:${m.role==='user'?'var(--accent)':'var(--bg-2)'};color:${m.role==='user'?'#fff':'var(--text)'};font-size:13px;line-height:1.7;white-space:pre-wrap">${escHtml(m.content)}</div>
+        </div>`).join('')}
+      ${state.agentLoading ? '<div style="color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">Thinking...</div>' : ''}
+    </div>
+    <form id="chat-agent-form" style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <input type="text" name="question" placeholder="Ask about your CRM data..." autocomplete="off" style="flex:1;padding:11px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none" />
+      <button type="submit" class="find-leads-btn" ${state.agentLoading?'disabled':''}>Send</button>
+    </form>
+  </div>`;
+}
+
+function renderApiKeyModal() {
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header">
+        <div class="modal-title">Connect AI Provider</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="api-key-form" style="padding:20px 28px 24px">
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Provider</label>
+          <select name="provider" style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+            <option value="openai" ${getProvider()==='openai'?'selected':''}>OpenAI (GPT-4o-mini)</option>
+            <option value="anthropic" ${getProvider()==='anthropic'?'selected':''}>Anthropic (Claude Sonnet)</option>
+          </select>
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">API Key</label>
+          <input type="password" name="apiKey" value="${getApiKey()}" placeholder="sk-..." style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace" />
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:18px;line-height:1.6">
+          Get a key at <strong>platform.openai.com/api-keys</strong> or <strong>console.anthropic.com</strong>. Stored only in your browser's local storage — never sent to our servers.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          ${hasApiKey() ? `<button type="button" id="btn-clear-key" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.25);background:var(--red-light);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Remove Key</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          <button type="submit" class="find-leads-btn" style="padding:9px 20px">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Relationship Map View ───────────────────────────────────────────
+function renderMapView() {
+  const { nodes, edges } = { nodes: state.mapNodes, edges: state.mapEdges };
+  const W = 1100, H = 640;
+  const byType = {};
+  nodes.forEach(n => { (byType[n.type] = byType[n.type] || []).push(n); });
+  const types = Object.keys(byType);
+  const positions = state.mapPositions;
+
+  types.forEach((type, ti) => {
+    const list = byType[type];
+    const colX = (ti + 0.5) / types.length * W;
+    list.forEach((n, i) => {
+      if (!positions[n.id]) {
+        positions[n.id] = { x: colX + (Math.random()-0.5)*80, y: (i + 0.5) / list.length * H + (Math.random()-0.5)*20 };
+      }
+    });
+  });
+
+  const selected = state.mapSelectedNode ? nodes.find(n => n.id === state.mapSelectedNode) : null;
+
+  return `
+  <div class="page-header">
+    <div class="page-title">Relationship Map</div>
+    <div class="page-sub">${nodes.length} nodes · ${edges.length} connections — drag nodes, click to inspect</div>
+  </div>
+  <div style="display:grid;grid-template-columns:${selected ? '1fr 320px' : '1fr'};gap:16px">
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-card);position:relative">
+      <svg id="map-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:640px;display:block;cursor:grab">
+        <g id="map-edges">
+          ${edges.map(e => {
+            const f = positions[e.from], t = positions[e.to];
+            if (!f || !t) return '';
+            return `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="var(--border)" stroke-width="1.5" />`;
+          }).join('')}
+        </g>
+        <g id="map-nodes">
+          ${nodes.map(n => {
+            const p = positions[n.id] || { x: W/2, y: H/2 };
+            const r = 14 * (n.size || 1);
+            const isSelected = state.mapSelectedNode === n.id;
+            return `
+            <g class="map-node" data-node-id="${n.id}" style="cursor:pointer" transform="translate(${p.x},${p.y})">
+              <circle r="${r}" fill="${n.color}" opacity="${isSelected?1:0.85}" stroke="${isSelected?'#fff':'none'}" stroke-width="3" />
+              <text y="${r + 16}" text-anchor="middle" font-size="11" font-family="DM Mono, monospace" fill="var(--text-2)">${escHtml((n.label||'').substring(0,18))}</text>
+            </g>`;
+          }).join('')}
+        </g>
+      </svg>
+      <div style="position:absolute;bottom:16px;left:16px;display:flex;gap:10px;flex-wrap:wrap;background:var(--bg-1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+        ${Object.entries(NODE_TYPE_LABELS).map(([type, label]) => {
+          const colorMap = { lead:'#f59e0b', project:'#3b82f6', team:'#a855f7', position:'#10b981', candidate:'#ec4899' };
+          return `<div style="display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block"></span>${label}</div>`;
+        }).join('')}
+      </div>
+    </div>
+    ${selected ? `
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-card)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
+        <button id="btn-close-node-panel" style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;width:24px;height:24px;cursor:pointer;color:var(--text-3)">✕</button>
+      </div>
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
+      <div style="font-size:13px;color:var(--text-2)">${selected.sub||''}</div>
+    </div>` : ''}
+  </div>`;
+}
+
 // ── Notification Panel ───────────────────────────────────────────────
 function renderNotifPanel() {
   if (!state.showNotifPanel) return '';
@@ -1211,6 +1418,8 @@ function renderSidebar() {
     {id:'social-planner', icon:'📋', label:'Social Planner', section:'crm'},
     {id:'articles',       icon:'📝', label:'Articles', section:'crm'},
     {id:'analytics',      icon:'📊', label:'Analytics', section:'crm'},
+    {id:'agents',         icon:'🤖', label:'AI Agents', section:'crm'},
+    {id:'map',            icon:'🕸️', label:'Relationship Map', section:'crm'},
     {id:'pipeline',       icon:'◈', label:'Pipeline', section:'sales'},
     {id:'recruiting',     icon:'⬡', label:'Recruiting', section:'sales'},
     {id:'social',         icon:'✦', label:'Content Engine', section:'tools'},
@@ -1771,6 +1980,8 @@ function renderView() {
   if (state.view==='articles')        return renderArticlesView();
   if (state.view==='social-planner')  return renderSocialPlanner();
   if (state.view==='analytics')       return renderAnalyticsView();
+  if (state.view==='agents')          return renderAgentsView();
+  if (state.view==='map')             return renderMapView();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -2019,6 +2230,12 @@ function render() {
     document.body.appendChild(el.firstElementChild);
     attachSocialPostModalEvents();
   }
+  if (state.showApiKeyModal) {
+    const el = document.createElement('div');
+    el.innerHTML = renderApiKeyModal();
+    document.body.appendChild(el.firstElementChild);
+    attachApiKeyModalEvents();
+  }
   // Notification panel
   const existingNotif = document.getElementById('notif-panel');
   if (existingNotif) existingNotif.remove();
@@ -2063,6 +2280,16 @@ function attachEvents() {
       }
       if (el.dataset.nav === 'analytics') {
         state.analyticsData = await fetchAnalyticsOverview(state.analyticsDays);
+      }
+      if (el.dataset.nav === 'agents') {
+        state.activeAgent = null; state.agentOutput = ''; state.agentError = null;
+      }
+      if (el.dataset.nav === 'map') {
+        if (state.team.length === 0) state.team = await fetchTeam();
+        if (state.leads.length === 0) state.leads = await fetchLeads();
+        if (state.projects.length === 0) state.projects = await fetchProjects();
+        const g = buildGraph({ leads: state.leads, projects: state.projects, team: state.team, positions, candidates });
+        state.mapNodes = g.nodes; state.mapEdges = g.edges;
       }
       render();
     });
@@ -2210,6 +2437,8 @@ function attachEvents() {
   attachArticleEvents();
   attachSocialPlannerEvents();
   attachAnalyticsEvents();
+  attachAgentEvents();
+  attachMapEvents();
 
   // Theme toggle
   document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
@@ -2832,6 +3061,137 @@ function attachAnalyticsEvents() {
     state.analyticsData = await fetchAnalyticsOverview(days);
     showToast(`Showing ${days} days of data`, 'success');
     render();
+  });
+}
+
+// ── Agent Events ─────────────────────────────────────────────────────
+function attachAgentEvents() {
+  document.getElementById('btn-agent-settings')?.addEventListener('click', () => { state.showApiKeyModal = true; render(); });
+  document.getElementById('btn-agent-settings-2')?.addEventListener('click', () => { state.showApiKeyModal = true; render(); });
+  document.querySelectorAll('[data-open-agent]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.activeAgent = el.dataset.openAgent;
+      state.agentOutput = ''; state.agentError = null; state.agentInput = '';
+      render();
+    });
+  });
+  document.getElementById('btn-back-agents')?.addEventListener('click', () => {
+    state.activeAgent = null; render();
+  });
+  document.getElementById('btn-run-agent')?.addEventListener('click', async () => {
+    const input = document.getElementById('agent-input')?.value || '';
+    state.agentInput = input;
+    state.agentLoading = true; state.agentError = null; state.agentOutput = '';
+    render();
+    try {
+      let output;
+      if (state.activeAgent === 'marketing') output = await runMarketingPlannerAgent(input);
+      else if (state.activeAgent === 'leadfinder') output = await runLeadFinderAgent(input, state.leads.map(l=>l.company).join(', '));
+      else if (state.activeAgent === 'headhunter') output = await runHRHeadhunterAgent(input);
+      state.agentOutput = output;
+    } catch (err) {
+      state.agentError = err.message;
+    }
+    state.agentLoading = false;
+    render();
+  });
+  document.getElementById('btn-copy-agent-output')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(state.agentOutput);
+    showToast('Copied to clipboard', 'success');
+  });
+  document.getElementById('chat-agent-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const q = fd.get('question')?.trim();
+    if (!q) return;
+    state.chatHistory.push({ role: 'user', content: q });
+    state.agentLoading = true;
+    e.target.reset();
+    render();
+    const ctx = `Leads: ${state.leads.length} (${state.leads.slice(0,5).map(l=>l.name+' @ '+l.company).join('; ')}). Projects: ${state.projects.length}. Prospects: ${prospects.length}.`;
+    try {
+      const answer = await runChatAssistant(q, ctx);
+      state.chatHistory.push({ role: 'assistant', content: answer });
+    } catch (err) {
+      state.chatHistory.push({ role: 'assistant', content: 'Error: ' + err.message });
+    }
+    state.agentLoading = false;
+    render();
+    setTimeout(() => { const el = document.getElementById('chat-agent-messages'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+  });
+}
+
+function attachApiKeyModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const closeModal = () => { state.showApiKeyModal = false; overlay.remove(); render(); };
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.getElementById('btn-clear-key')?.addEventListener('click', () => {
+    clearApiKey();
+    showToast('API key removed', 'success');
+    closeModal();
+  });
+  document.getElementById('api-key-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    setApiKey(fd.get('apiKey'), fd.get('provider'));
+    showToast('API key saved ✓', 'success');
+    closeModal();
+  });
+}
+
+// ── Map Events ───────────────────────────────────────────────────────
+function attachMapEvents() {
+  document.getElementById('btn-close-node-panel')?.addEventListener('click', () => {
+    state.mapSelectedNode = null; render();
+  });
+  document.querySelectorAll('.map-node').forEach(el => {
+    let dragging = false, startX, startY, origX, origY;
+    el.addEventListener('mousedown', (e) => {
+      dragging = true;
+      const id = el.dataset.nodeId;
+      const p = state.mapPositions[id];
+      startX = e.clientX; startY = e.clientY; origX = p.x; origY = p.y;
+      e.preventDefault();
+    });
+    el.addEventListener('click', (e) => {
+      if (Math.abs(e.clientX - startX) < 3 && Math.abs(e.clientY - startY) < 3) {
+        state.mapSelectedNode = el.dataset.nodeId;
+        render();
+      }
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const svg = document.getElementById('map-svg');
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const scale = 1100 / rect.width;
+      const id = el.dataset.nodeId;
+      state.mapPositions[id] = {
+        x: origX + (e.clientX - startX) * scale,
+        y: origY + (e.clientY - startY) * scale,
+      };
+      const g = document.querySelector(`g[data-node-id="${id}"]`);
+      if (g) g.setAttribute('transform', `translate(${state.mapPositions[id].x},${state.mapPositions[id].y})`);
+      updateMapEdges();
+    });
+    window.addEventListener('mouseup', () => { dragging = false; });
+  });
+}
+
+function updateMapEdges() {
+  const edgesG = document.getElementById('map-edges');
+  if (!edgesG) return;
+  const lines = edgesG.querySelectorAll('line');
+  state.mapEdges.forEach((e, i) => {
+    const f = state.mapPositions[e.from], t = state.mapPositions[e.to];
+    const line = lines[i];
+    if (line && f && t) {
+      line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
+      line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    }
   });
 }
 
