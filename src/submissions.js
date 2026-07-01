@@ -33,6 +33,39 @@ export async function updateJobApplicationNotes(id, notes) {
   await supabase.from('job_applications').update({ notes }).eq('id', id);
 }
 
+export async function deleteGeneralCV(id) {
+  const { data } = await supabase.from('general_cv_submissions').select('resume_url').eq('id', id).single();
+  if (data?.resume_url) {
+    const path = data.resume_url.split('/resumes/')[1];
+    if (path) await supabase.storage.from('resumes').remove([decodeURIComponent(path)]);
+  }
+  await supabase.from('general_cv_submissions').delete().eq('id', id);
+}
+
+export async function uploadAndAddCV({ name, email, phone, currentTitle, currentCompany, location, file }) {
+  let resume_url = null;
+  if (file) {
+    const ext = file.name.split('.').pop();
+    const path = `manual/${Date.now()}_${name.replace(/\s+/g,'_')}.${ext}`;
+    const { error } = await supabase.storage.from('resumes').upload(path, file, { upsert: true });
+    if (!error) {
+      const { data: urlData } = supabase.storage.from('resumes').getPublicUrl(path);
+      resume_url = urlData.publicUrl;
+    }
+  }
+  const { data, error } = await supabase.from('general_cv_submissions').insert({
+    name, email, phone: phone || null,
+    current_title: currentTitle || null,
+    current_company: currentCompany || null,
+    location: location || null,
+    resume_url,
+    status: 'new',
+    source: 'manual',
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchAIAssessments() {
   if (!supabase) return [];
   const { data } = await supabase.from('ai_assessments').select('*').order('created_at', { ascending: false });

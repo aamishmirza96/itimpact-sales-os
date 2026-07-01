@@ -76,7 +76,8 @@ body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif; fo
 .main { margin-left: var(--sidebar-w); flex: 1; overflow-y: auto; height: 100vh; padding: 28px 36px 40px; background: var(--bg); }
 
 /* ── Page header ── */
-.page-header { margin-bottom: 28px; }
+.page-header { margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-header-left { flex: 1; }
 .pipe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .page-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 30px; letter-spacing: -0.5px; color: var(--text); }
 .page-sub { font-size: 13px; color: var(--text-3); margin-top: 5px; font-family: 'DM Mono', monospace; }
@@ -393,7 +394,10 @@ tr.expanded-row td { padding: 0; background: var(--bg-2); border-bottom: 1px sol
 .cand-status-pill { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
 .email-sent-badge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--green); }
 .email-not-sent-badge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); }
-.rec-cv-link { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); text-decoration: none; }
+.rec-cv-link { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); text-decoration: none; padding: 4px 10px; border: 1px solid var(--accent); border-radius: 6px; transition: opacity 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+.rec-cv-link:hover { opacity: 0.75; }
+.btn-danger-sm { font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 10px; border: 1px solid rgba(248,113,113,0.3); background: var(--red-glow); color: var(--red); border-radius: 6px; cursor: pointer; transition: opacity 0.15s; }
+.btn-danger-sm:hover { opacity: 0.75; }
 .rec-cands-layout { display: grid; grid-template-columns: 210px 1fr; gap: 18px; }
 .rec-pos-sidebar { display: flex; flex-direction: column; gap: 4px; }
 .rec-pos-sidebar-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin-bottom: 8px; }

@@ -27,6 +27,7 @@ import {
   fetchGeneralCVs, updateGeneralCVStatus, updateGeneralCVNotes,
   fetchJobApplications, updateJobApplicationStatus, updateJobApplicationNotes,
   fetchAIAssessments, updateAIAssessmentStatus,
+  deleteGeneralCV, uploadAndAddCV,
 } from './submissions.js';
 
 // ── Persist & State ──────────────────────────────────────────────────
@@ -140,6 +141,7 @@ const state = {
   jobApplications: [],
   aiAssessments: [],
   jobAppFilter: 'all',
+  showAddCVModal: false,
   expandedSubmission: null,
   // Agents
   activeAgent: null,
@@ -1138,21 +1140,82 @@ function renderGeneralCVs() {
   const items = state.generalCVs;
   return `
   <div class="page-header">
-    <div class="page-title">General CVs</div>
-    <div class="page-sub">${items.length} open applications (no specific role)</div>
+    <div>
+      <div class="page-title">General CVs</div>
+      <div class="page-sub">${items.length} candidate${items.length !== 1 ? 's' : ''} on file</div>
+    </div>
+    <button class="btn-primary" data-open-add-cv="1">+ Add CV</button>
   </div>
   <div class="rec-cands-list">
-    ${items.length === 0 ? '<div class="social-empty">No general CV submissions yet.</div>' : ''}
+    ${items.length === 0 ? '<div class="social-empty">No CVs yet. Click "+ Add CV" to upload one.</div>' : ''}
     ${items.map(s => submissionCard(s, {
       table: 'general_cv_submissions', idPrefix: 'cv-', statusOptions: CV_STATUSES,
       extraFields: [{key:'current_title',label:'Current Role'},{key:'current_company',label:'Company'},{key:'location',label:'Location'}],
       renderDetail: (s) => `
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
           ${s.linkedin_url ? `<a href="${s.linkedin_url}" target="_blank" class="rec-cv-link">🔗 LinkedIn Profile</a>` : `<span style="font-size:11px;color:var(--text-3)">No LinkedIn provided</span>`}
-          ${s.resume_url ? `<a href="${s.resume_url}" target="_blank" class="rec-cv-link">📄 View Resume</a>` : `<span style="font-size:11px;color:var(--red)">⚠ No resume attached</span>`}
+          ${s.resume_url ? `
+            <a href="${s.resume_url}" target="_blank" class="rec-cv-link">👁 View CV</a>
+            <a href="${s.resume_url}" download class="rec-cv-link" style="background:var(--accent);color:#fff;border-color:var(--accent)">⬇ Download</a>
+          ` : `<span style="font-size:11px;color:var(--red)">⚠ No CV attached</span>`}
+          <button class="btn-danger-sm" data-delete-cv="${s.id}">🗑 Delete</button>
         </div>
+        ${s.source === 'manual' ? '<span style="font-size:10px;color:var(--text-3);background:var(--bg-2);padding:2px 8px;border-radius:10px">Manually uploaded</span>' : ''}
       `,
     })).join('')}
+  </div>
+  ${state.showAddCVModal ? renderAddCVModal() : ''}`;
+}
+
+function renderAddCVModal() {
+  return `
+  <div class="modal-overlay" data-close-add-cv="1">
+    <div class="modal-box" style="max-width:480px" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">Upload CV</div>
+        <button class="modal-close" data-close-add-cv="1">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input class="form-input" id="cv-name" placeholder="Jane Smith" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input class="form-input" id="cv-email" type="email" placeholder="jane@example.com" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-input" id="cv-phone" placeholder="+1 555 0000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-input" id="cv-location" placeholder="New York, NY">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Current Title</label>
+            <input class="form-input" id="cv-title" placeholder="Marketing Manager">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Company</label>
+            <input class="form-input" id="cv-company" placeholder="Acme Corp">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CV / Resume File (PDF, DOC, DOCX)</label>
+          <input class="form-input" id="cv-file" type="file" accept=".pdf,.doc,.docx" style="padding:8px;cursor:pointer">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+          <button class="btn-ghost" data-close-add-cv="1">Cancel</button>
+          <button class="btn-primary" id="cv-submit-btn" data-submit-add-cv="1">Upload CV</button>
+        </div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -3439,6 +3502,56 @@ function attachSubmissionEvents() {
   });
   document.querySelectorAll('[data-jobapp-filter]').forEach(el => {
     el.addEventListener('click', () => { state.jobAppFilter = el.dataset.jobappFilter; render(); });
+  });
+
+  // Add CV modal
+  document.querySelectorAll('[data-open-add-cv]').forEach(btn => {
+    btn.addEventListener('click', () => { state.showAddCVModal = true; render(); });
+  });
+  document.querySelectorAll('[data-close-add-cv]').forEach(btn => {
+    btn.addEventListener('click', () => { state.showAddCVModal = false; render(); });
+  });
+  document.querySelectorAll('[data-submit-add-cv]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = document.getElementById('cv-name')?.value.trim();
+      const email = document.getElementById('cv-email')?.value.trim();
+      if (!name || !email) { showToast('Name and email are required', 'error'); return; }
+      const file = document.getElementById('cv-file')?.files[0] || null;
+      btn.textContent = 'Uploading…'; btn.disabled = true;
+      try {
+        await uploadAndAddCV({
+          name, email,
+          phone: document.getElementById('cv-phone')?.value.trim(),
+          currentTitle: document.getElementById('cv-title')?.value.trim(),
+          currentCompany: document.getElementById('cv-company')?.value.trim(),
+          location: document.getElementById('cv-location')?.value.trim(),
+          file,
+        });
+        state.generalCVs = await fetchGeneralCVs();
+        state.showAddCVModal = false;
+        showToast('CV uploaded successfully', 'success');
+        render();
+      } catch (err) {
+        showToast('Upload failed: ' + err.message, 'error');
+        btn.textContent = 'Upload CV'; btn.disabled = false;
+      }
+    });
+  });
+
+  // Delete CV
+  document.querySelectorAll('[data-delete-cv]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete this CV permanently? This cannot be undone.')) return;
+      try {
+        await deleteGeneralCV(btn.dataset.deleteCv);
+        state.generalCVs = await fetchGeneralCVs();
+        showToast('CV deleted', 'success');
+        render();
+      } catch (err) {
+        showToast('Delete failed: ' + err.message, 'error');
+      }
+    });
   });
   document.querySelectorAll('[data-submission-status]').forEach(el => {
     el.addEventListener('change', async (e) => {
