@@ -39,17 +39,17 @@ app.post('/api/leads/search', async (req, res) => {
     return res.status(400).json({ error: 'Apollo API key not configured.' });
   try {
     const { titles, sectors, locations, page = 1 } = req.body;
-    const r = await fetch('https://api.apollo.io/v1/mixed_people/search', {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('per_page', '10');
+    (titles || ['Managing Partner','CIO','CTO','VP Portfolio Operations']).forEach(v => params.append('person_titles[]', v));
+    ['c_suite','vp','partner','director'].forEach(v => params.append('person_seniorities[]', v));
+    (sectors || ['private equity','venture capital','healthcare','dental']).forEach(v => params.append('q_organization_keyword_tags[]', v));
+    (locations || ['New York, NY','Chicago, IL','San Francisco, CA','Boston, MA']).forEach(v => params.append('person_locations[]', v));
+    ['11,50','51,200','201,500'].forEach(v => params.append('organization_num_employees_ranges[]', v));
+    const r = await fetch(`https://api.apollo.io/api/v1/mixed_people/api_search?${params}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'x-api-key': APOLLO_KEY },
-      body: JSON.stringify({
-        page, per_page: 10,
-        person_titles: titles || ['Managing Partner','CIO','CTO','VP Portfolio Operations'],
-        person_seniorities: ['c_suite','vp','partner','director'],
-        q_organization_keyword_tags: sectors || ['private equity','venture capital','healthcare','dental'],
-        person_locations: locations || ['New York, NY','Chicago, IL','San Francisco, CA','Boston, MA'],
-        organization_num_employees_ranges: ['11,50','51,200','201,500'],
-      }),
     });
     if (!r.ok) return res.status(r.status).json({ error: `Apollo ${r.status}`, detail: await r.text() });
     res.json(await r.json());
