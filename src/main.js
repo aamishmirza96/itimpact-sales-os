@@ -2279,6 +2279,8 @@ function renderDisqualify() {
 }
 
 // ── Home / Overview ───────────────────────────────────────────────────
+function fmt$(n) { if (!n) return '—'; return n >= 1000000 ? '$'+(n/1000000).toFixed(1)+'M' : n >= 1000 ? '$'+(n/1000).toFixed(0)+'k' : '$'+n; }
+
 function renderHome() {
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
@@ -2325,194 +2327,179 @@ function renderHome() {
     return `${Math.floor(h/24)}d ago`;
   };
 
+  const pipeStages = [
+    {label:'New',       id:'new',         color:'#94a3b8'},
+    {label:'Qualified', id:'qualified',   color:'var(--accent)'},
+    {label:'Proposal',  id:'proposal',    color:'#f59e0b'},
+    {label:'Negotiation',id:'negotiation',color:'#f97316'},
+    {label:'Won',       id:'won',         color:'#10b981'},
+  ];
+  const recentActivity = [
+    ...recentLeads.map(l=>({key:'lead',  label:l.company||l.name||'—', sub: l.contact_name||l.title||'New lead', val:l.value?fmt$(l.value):'', time:l.created_at, initials:(l.company||l.name||'?')[0].toUpperCase(), bg:'var(--accent)'})),
+    ...recentApps.map(a=> ({key:'app',   label:a.name||'—',            sub:`Applied · ${a.position_title||'role'}`,                                val:'',           time:a.created_at, initials:(a.name||'?')[0].toUpperCase(), bg:'#8b5cf6'})),
+    ...recentCVs.map(c=>  ({key:'cv',    label:c.name||'—',            sub:`CV · ${c.current_title||'General'}`,                                    val:'',           time:c.created_at, initials:(c.name||'?')[0].toUpperCase(), bg:'#06b6d4'})),
+  ].sort((a,b)=>new Date(b.time||0)-new Date(a.time||0)).slice(0,6);
+
   return `
-  <div style="max-width:1100px">
-    <!-- Header -->
-    <div style="margin-bottom:32px">
-      <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name} 👋</div>
-      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-3);margin-top:4px">${dateStr} · Here's what's happening at IT Impact</div>
+  <div style="max-width:1140px">
+
+    <!-- Greeting bar -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
+      </div>
+      ${pendingPosts > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.07);cursor:pointer" data-nav="social-planner">
+        <span style="font-size:13px;color:#f59e0b;font-weight:700">${pendingPosts} post${pendingPosts>1?'s':''} awaiting approval</span>
+        <span style="font-size:11px;color:#f59e0b;font-family:'DM Mono',monospace">Review →</span>
+      </div>` : ''}
+      ${state.contactSubmissions.filter(c=>c.status==='new').length > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(249,115,22,0.35);background:rgba(249,115,22,0.07);cursor:pointer" data-nav="contact-subs">
+        <span style="font-size:13px;color:#f97316;font-weight:700">${state.contactSubmissions.filter(c=>c.status==='new').length} new enquir${state.contactSubmissions.filter(c=>c.status==='new').length>1?'ies':'y'}</span>
+        <span style="font-size:11px;color:#f97316;font-family:'DM Mono',monospace">View →</span>
+      </div>` : ''}
     </div>
 
-    <!-- KPI Row -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
-      ${kpiCard('Total Leads', totalLeads, `${newLeads} new · ${qualifiedLeads} qualified`, '⚡', 'var(--accent)', 'leads')}
-      ${kpiCard('Pipeline Value', '$'+totalValue.toLocaleString(), `$${wonValue.toLocaleString()} won`, '💰', '#10b981', 'leads')}
-      ${kpiCard('Active Projects', activeProjects, `${completedProjects} completed`, '▣', '#f59e0b', 'projects')}
-      ${kpiCard('New Applications', newJobApps + newCVs, `${totalCandidates} total candidates`, '💼', '#8b5cf6', 'job-apps')}
+    <!-- KPI grid: 4 across -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
+      <div class="home-kpi-card" data-nav="leads">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
+      </div>
+      <div class="home-kpi-card" data-nav="leads">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${fmt$(wonValue)} won</div>
+      </div>
+      <div class="home-kpi-card" data-nav="projects">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${completedProjects} completed</div>
+      </div>
+      <div class="home-kpi-card" data-nav="job-apps">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${totalCandidates} total candidates</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+      <div class="home-kpi-card" data-nav="social-planner">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
+      </div>
+      <div class="home-kpi-card" data-nav="team">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">active users</div>
+      </div>
+      <div class="home-kpi-card" data-nav="analytics">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Live visitors</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#22c55e;letter-spacing:-1px;line-height:1">${state.liveVisitors.length}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">on website now</div>
+      </div>
+      <div class="home-kpi-card" data-nav="contact-subs">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${state.contactSubmissions.length} total</div>
+      </div>
     </div>
 
-    <!-- Second row -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px">
-      ${kpiCard('Social Posts', publishedPosts, `${pendingPosts} pending · ${approvedPosts} approved`, '📋', '#06b6d4', 'social-planner')}
-      ${kpiCard('Team Members', state.team.length, 'active users', '◉', '#ec4899', 'team')}
-      ${kpiCard('Live Visitors', state.liveVisitors.length, 'on website right now', '🌐', '#22c55e', 'analytics')}
-      ${kpiCard('Contact Submissions', state.contactSubmissions.filter(c=>c.status==='new').length, `${state.contactSubmissions.length} total`, '✉️', '#f97316', 'contact-subs')}
-    </div>
+    <!-- Bottom: pipeline + activity + sidebar -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 280px;gap:16px">
 
-    <!-- Main grid: recent activity + quick actions -->
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px">
-
-      <!-- Left: Recent leads + pipeline snapshot -->
-      <div style="display:flex;flex-direction:column;gap:20px">
-
-        <!-- Lead pipeline snapshot -->
-        <div class="home-card">
-          <div class="home-card-header">
-            <div class="home-card-title">Lead Pipeline</div>
-            <button class="home-card-link" data-nav="leads">View all →</button>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-            ${[
-              {label:'New',id:'new',color:'#64748b'},
-              {label:'Qualified',id:'qualified',color:'var(--accent)'},
-              {label:'Proposal',id:'proposal',color:'#f59e0b'},
-              {label:'Negotiation',id:'negotiation',color:'#f97316'},
-              {label:'Won',id:'won',color:'#10b981'},
-            ].map(s => {
-              const count = state.leads.filter(l=>l.status===s.id).length;
-              const pct = totalLeads ? Math.round(count/totalLeads*100) : 0;
-              return `<div style="flex:1;min-width:80px;background:var(--bg-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border-subtle)">
-                <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:22px;color:${s.color}">${count}</div>
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-3);margin-top:2px">${s.label}</div>
-                <div style="font-size:10px;color:var(--text-3)">${pct}%</div>
-              </div>`;
-            }).join('')}
-          </div>
-          ${recentLeads.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">No leads yet</div>' : ''}
-          ${recentLeads.map(l => `
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
-              <div style="width:36px;height:36px;border-radius:10px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">
-                ${(l.company||l.name||'?')[0].toUpperCase()}
+      <!-- Pipeline bars -->
+      <div class="home-card">
+        <div class="home-card-header">
+          <div class="home-card-title">Lead pipeline</div>
+          <button class="home-card-link" data-nav="leads">View all →</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${pipeStages.map(s => {
+            const count = state.leads.filter(l=>l.status===s.id).length;
+            const pct = totalLeads ? Math.round(count/totalLeads*100) : 0;
+            return `
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                <span style="font-size:12px;font-weight:600;color:var(--text-2)">${s.label}</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">${count}</span>
               </div>
+              <div style="height:6px;border-radius:3px;background:var(--bg-1);overflow:hidden">
+                <div style="height:100%;border-radius:3px;background:${s.color};width:${pct||0}%;transition:width 0.4s"></div>
+              </div>
+            </div>`;
+          }).join('')}
+          ${totalLeads === 0 ? '<div style="text-align:center;padding:16px;color:var(--text-3);font-family:DM Mono,monospace;font-size:11px">No leads yet</div>' : ''}
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="home-card">
+        <div class="home-card-header">
+          <div class="home-card-title">Recent activity</div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          ${recentActivity.length === 0
+            ? '<div style="text-align:center;padding:24px;color:var(--text-3);font-family:DM Mono,monospace;font-size:11px">No activity yet</div>'
+            : recentActivity.map(a => `
+            <div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
+              <div style="width:32px;height:32px;border-radius:8px;background:${a.bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">${a.initials}</div>
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.company || l.name || '—'}</div>
-                <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${l.contact_name||''} ${l.contact_name&&l.title?' · ':''} ${l.title||''}</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.label}</div>
+                <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${a.sub}</div>
               </div>
               <div style="text-align:right;flex-shrink:0">
-                <div style="font-size:12px;font-weight:700;color:var(--text)">${l.value?'$'+Number(l.value).toLocaleString():'—'}</div>
-                <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${timeAgo(l.created_at)}</div>
+                ${a.val ? `<div style="font-size:12px;font-weight:700;color:var(--text)">${a.val}</div>` : ''}
+                <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${timeAgo(a.time)}</div>
               </div>
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- Recent candidates -->
-        <div class="home-card">
-          <div class="home-card-header">
-            <div class="home-card-title">Recent Candidates</div>
-            <button class="home-card-link" data-nav="job-apps">View all →</button>
-          </div>
-          ${[...recentApps.map(a=>({...a,_type:'Job App'})), ...recentCVs.map(c=>({...c,_type:'General CV'}))].length === 0
-            ? '<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">No applications yet</div>'
-            : [...recentApps.map(a=>({...a,_type:'Job App'})), ...recentCVs.map(c=>({...c,_type:'General CV'}))].map(a => `
-              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
-                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">
-                  ${(a.name||'?')[0].toUpperCase()}
-                </div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:700;font-size:13px;color:var(--text)">${a.name||'—'}</div>
-                  <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${a.position_title||a.current_title||'—'}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0">
-                  <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${a._type==='Job App'?'rgba(6,182,212,0.12)':'rgba(139,92,246,0.12)'};color:${a._type==='Job App'?'#06b6d4':'#8b5cf6'};font-family:'DM Mono',monospace">${a._type}</span>
-                  <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:2px">${timeAgo(a.created_at)}</div>
-                </div>
-              </div>
-            `).join('')}
+            </div>`).join('')}
         </div>
       </div>
 
-      <!-- Right: Quick actions + status -->
-      <div style="display:flex;flex-direction:column;gap:20px">
-
-        <!-- Quick actions -->
+      <!-- Right column: quick actions + status -->
+      <div style="display:flex;flex-direction:column;gap:14px">
         <div class="home-card">
-          <div class="home-card-header">
-            <div class="home-card-title">Quick Actions</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${quickAction('⚡', 'Add New Lead', 'leads', '#4f46e5')}
-            ${quickAction('▣', 'View Projects', 'projects', '#f59e0b')}
-            ${quickAction('📄', 'Upload a CV', 'general-cvs', '#8b5cf6')}
-            ${quickAction('📋', 'Create Social Post', 'social-planner', '#06b6d4')}
-            ${quickAction('📊', 'Analytics & Traffic', 'analytics', '#10b981')}
-            ${quickAction('🤖', 'Ask Jarvis AI', 'agents', '#ec4899')}
+          <div class="home-card-header"><div class="home-card-title">Quick actions</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${[
+              {icon:'⚡',label:'Add new lead',nav:'leads'},
+              {icon:'▣',label:'View projects',nav:'projects'},
+              {icon:'📄',label:'Upload a CV',nav:'general-cvs'},
+              {icon:'📋',label:'Social planner',nav:'social-planner'},
+              {icon:'📊',label:'Analytics',nav:'analytics'},
+              {icon:'🤖',label:'Ask Jarvis',nav:'agents'},
+            ].map(a=>`
+            <div data-nav="${a.nav}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-1);cursor:pointer;transition:border-color 0.15s">
+              <span style="font-size:14px">${a.icon}</span>
+              <span style="font-size:12px;font-weight:600;color:var(--text)">${a.label}</span>
+              <span style="margin-left:auto;font-size:12px;color:var(--text-3)">→</span>
+            </div>`).join('')}
           </div>
         </div>
-
-        <!-- System status -->
         <div class="home-card">
-          <div class="home-card-header">
-            <div class="home-card-title">System Status</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            ${statusRow('Supabase Database', true)}
-            ${statusRow('Google Analytics', state.googleConnected)}
-            ${statusRow('LinkedIn Account', state.linkedinConnected)}
-            ${statusRow('Website Tracker', state.liveVisitors !== null)}
-            ${statusRow('AI Agents', !!localStorage.getItem('openai_key') || !!localStorage.getItem('anthropic_key'))}
+          <div class="home-card-header"><div class="home-card-title">System status</div></div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            ${[
+              {label:'Database',    ok:true},
+              {label:'Google Analytics', ok:state.googleConnected},
+              {label:'LinkedIn',    ok:state.linkedinConnected},
+              {label:'Web tracker', ok:true},
+              {label:'AI agents',   ok:!!(localStorage.getItem('openai_key')||localStorage.getItem('anthropic_key'))},
+            ].map(r=>`
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;color:var(--text-2)">${r.label}</span>
+              <span style="font-size:10px;font-family:'DM Mono',monospace;padding:2px 9px;border-radius:20px;background:${r.ok?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.08)'};color:${r.ok?'#10b981':'var(--red)'}">
+                ${r.ok?'● on':'○ off'}
+              </span>
+            </div>`).join('')}
           </div>
         </div>
-
-        <!-- Social posts pending -->
-        ${pendingPosts > 0 ? `
-        <div class="home-card" style="border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.04)">
-          <div class="home-card-header">
-            <div class="home-card-title" style="color:#f59e0b">⚠ Pending Approval</div>
-            <button class="home-card-link" data-nav="social-planner">Review →</button>
-          </div>
-          <div style="font-size:13px;color:var(--text-2)">${pendingPosts} social post${pendingPosts>1?'s':''} waiting for your approval before publishing.</div>
-        </div>` : ''}
-
-        <!-- New contact submissions alert -->
-        ${state.contactSubmissions.filter(c=>c.status==='new').length > 0 ? `
-        <div class="home-card" style="border:1px solid rgba(249,115,22,0.3);background:rgba(249,115,22,0.04)">
-          <div class="home-card-header">
-            <div class="home-card-title" style="color:#f97316">📬 New Enquiries</div>
-            <button class="home-card-link" data-nav="contact-subs">View →</button>
-          </div>
-          <div style="font-size:13px;color:var(--text-2)">${state.contactSubmissions.filter(c=>c.status==='new').length} new contact form submission${state.contactSubmissions.filter(c=>c.status==='new').length>1?'s':''} need attention.</div>
-        </div>` : ''}
       </div>
+
     </div>
   </div>`;
 }
 
-function kpiCard(label, value, sub, icon, color, nav) {
-  return `
-  <div class="home-kpi-card" data-nav="${nav}" style="cursor:pointer">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:22px">${icon}</div>
-      <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-3);background:var(--bg-2);padding:3px 8px;border-radius:20px">→</div>
-    </div>
-    <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;color:${color};letter-spacing:-1px">${value}</div>
-    <div style="font-size:12px;font-weight:700;color:var(--text);margin-top:4px">${label}</div>
-    <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text-3);margin-top:2px">${sub}</div>
-  </div>`;
-}
-
-function quickAction(icon, label, nav, color) {
-  return `
-  <div data-nav="${nav}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border-subtle);cursor:pointer;transition:all 0.15s"
-    onmouseover="this.style.borderColor='${color}';this.style.background='var(--bg-3)'"
-    onmouseout="this.style.borderColor='var(--border-subtle)';this.style.background='var(--bg-2)'">
-    <span style="font-size:16px">${icon}</span>
-    <span style="font-size:13px;font-weight:700;color:var(--text)">${label}</span>
-    <span style="margin-left:auto;color:var(--text-3);font-size:14px">→</span>
-  </div>`;
-}
-
-function statusRow(label, ok) {
-  return `
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <span style="font-size:13px;color:var(--text-2)">${label}</span>
-    <span style="font-size:11px;font-family:'DM Mono',monospace;padding:2px 10px;border-radius:20px;${ok
-      ? 'background:rgba(16,185,129,0.12);color:#10b981'
-      : 'background:rgba(248,113,113,0.12);color:var(--red)'}">
-      ${ok ? '● Connected' : '○ Not set up'}
-    </span>
-  </div>`;
-}
 
 // ── Outreach View ─────────────────────────────────────────────────────
 function renderOutreach() {
