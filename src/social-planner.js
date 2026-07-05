@@ -144,8 +144,7 @@ function getJulyPlan(authorId) {
     content: p.content,
     platforms: p.platform,
     scheduled_date: p.day + 'T09:00:00Z',
-    status: 'brief',
+    status: 'draft',
     author_id: authorId,
-    notes: 'Part of July 2026 social media plan',
   }));
 }

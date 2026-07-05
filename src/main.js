@@ -443,9 +443,9 @@ function renderTeam() {
     <div style="display:flex;gap:8px;align-items:center">
       ${ceoUnlocked ? `
         <button class="find-leads-btn" id="btn-add-member">+ Add Member</button>
-        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
+        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-family:Arial,sans-serif;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
       ` : `
-        <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
+        <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:Arial,sans-serif;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
       `}
     </div>
   </div>
@@ -460,20 +460,20 @@ function renderTeam() {
             <button class="team-delete-btn" data-delete-member="${m.id}" data-member-name="${escHtml(m.full_name||m.email)}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,0.2);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Remove">✕</button>
           </div>` : ''}
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0;position:relative">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0;position:relative">
             ${(m.full_name||m.email||'?')[0].toUpperCase()}
             <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card-flat)"></div>
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:15px;font-weight:600;color:var(--text)">${m.full_name||'Unnamed'}</div>
-            <div style="font-size:12px;color:var(--accent-2);font-family:'DM Mono',monospace">${m.designation||m.role||'Member'}</div>
+            <div style="font-size:12px;color:var(--accent-2);font-family:Arial,sans-serif">${m.designation||m.role||'Member'}</div>
           </div>
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${m.email}</div>
-        ${m.department ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
+        ${m.department ? `<div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
         ${m.bio ? `<div style="font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px">${m.bio}</div>` : ''}
         ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
-        ${m.phone ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
+        ${m.phone ? `<div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
       </div>`;
     }).join('')}
     ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
@@ -493,38 +493,38 @@ function renderAddMemberModal() {
       <form id="member-form" style="padding:20px 28px 24px">
         ${!isEdit ? `
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email Address *</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email Address *</label>
           <input type="email" name="email" required placeholder="team@itimpact.com" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:5px">They'll receive an invite email to set their password.</div>
+          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:5px">They'll receive an invite email to set their password.</div>
         </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
             <input type="text" name="full_name" value="${escHtml(m.full_name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation</label>
             <input type="text" name="designation" value="${escHtml(m.designation||'')}" placeholder="e.g. CTO, Designer, Sales Lead" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Department</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Department</label>
             <input type="text" name="department" value="${escHtml(m.department||'')}" placeholder="e.g. Engineering, Sales" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
             <input type="text" name="phone" value="${escHtml(m.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation / Role</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation / Role</label>
             <input type="text" name="designation_role" value="${escHtml(m.designation || m.role || '')}" placeholder="e.g. CEO, CTO, Lead Designer, Sales Head" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
-            <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
+            <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
               <option value="active" ${m.status==='active'||!m.status?'selected':''}>Active</option>
               <option value="away" ${m.status==='away'?'selected':''}>Away</option>
               <option value="offline" ${m.status==='offline'?'selected':''}>Offline</option>
@@ -532,16 +532,16 @@ function renderAddMemberModal() {
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
-          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Manrope,sans-serif">${escHtml(m.bio||'')}</textarea>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
+          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Arial,sans-serif">${escHtml(m.bio||'')}</textarea>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
           <input type="text" name="skills" value="${(m.skills||[]).join(', ')}" placeholder="e.g. React, Sales, AI, Design" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Add Member'}</button>
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Add Member'}</button>
         </div>
       </form>
     </div>
@@ -570,11 +570,11 @@ function renderArticlesView() {
         <div style="padding:16px 18px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <span class="cand-status-pill" style="background:${a.status==='published'?'var(--green-glow)':a.status==='draft'?'rgba(90,90,114,0.15)':'var(--amber-glow)'};color:${a.status==='published'?'var(--green)':a.status==='draft'?'var(--text-3)':'var(--amber)'}">${a.status}</span>
-            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
+            <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
           </div>
-          <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
+          <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
           <div style="font-size:12px;color:var(--text-2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${(a.body||'').replace(/[#*_]/g,'').substring(0,200)}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
+          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
         </div>
       </div>`).join('')}
     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No articles yet. Click "+ New Article" to create one.</div>' : ''}
@@ -593,50 +593,50 @@ function renderArticleModal() {
       </div>
       <form id="article-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
-          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Manrope,sans-serif;font-weight:600" />
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
+          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Arial,sans-serif;font-weight:600" />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Category</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Category</label>
             <input type="text" name="category" value="${escHtml(a.category||'general')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Cover Image URL</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Cover Image URL</label>
             <input type="url" name="cover_image" value="${escHtml(a.cover_image||'')}" placeholder="https://..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="margin-bottom:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Content</label>
-            <button type="button" id="btn-ai-write" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;display:flex;align-items:center;gap:5px">✨ AI Write</button>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Content</label>
+            <button type="button" id="btn-ai-write" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:10px;display:flex;align-items:center;gap:5px">✨ AI Write</button>
           </div>
           <div id="ai-write-panel" style="display:none;margin-bottom:10px;padding:12px;background:var(--bg-2);border-radius:8px;border:1px solid var(--border)">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input id="ai-topic" placeholder="Article topic or instructions..." style="flex:1;min-width:180px;padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
-              <select id="ai-tone" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+              <select id="ai-tone" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
                 <option value="professional">Professional</option>
                 <option value="authoritative">Authoritative</option>
                 <option value="conversational">Conversational</option>
               </select>
-              <select id="ai-length" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+              <select id="ai-length" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
                 <option value="medium">Medium (~800 words)</option>
                 <option value="short">Short (~500 words)</option>
                 <option value="long">Long (~1500 words)</option>
               </select>
-              <button type="button" id="btn-ai-generate" style="padding:8px 14px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:12px">Generate</button>
+              <button type="button" id="btn-ai-generate" style="padding:8px 14px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:12px">Generate</button>
             </div>
-            <div id="ai-write-status" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:8px"></div>
+            <div id="ai-write-status" style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);margin-top:8px"></div>
           </div>
-          <textarea name="body" id="article-body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
+          <textarea name="body" id="article-body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
-          ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
-          <select name="status" style="padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+          ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Delete</button>` : ''}
+          <select name="status" style="padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
             <option value="draft" ${a.status==='draft'||!a.status?'selected':''}>Draft</option>
             <option value="published" ${a.status==='published'?'selected':''}>Published</option>
           </select>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
         </div>
       </form>
     </div>
@@ -647,7 +647,7 @@ function renderArticleModal() {
 function renderSocialPlanner() {
   const stageIds = ['all', ...POST_STAGES.map(s => s.id)];
   const filtered = state.socialPostFilter === 'all' ? state.socialPosts : state.socialPosts.filter(p => p.status === state.socialPostFilter);
-  const julyExists = state.socialPosts.some(p => p.notes === 'Part of July 2026 social media plan');
+  const julyExists = state.socialPosts.length >= 15;
   return `
   <div class="page-header pipe-header">
     <div>
@@ -665,7 +665,7 @@ function renderSocialPlanner() {
     ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => {
       const count = state.socialPosts.filter(p => p.status === s.id || (s.id === 'brief' && (p.status === 'draft' || !p.status))).length;
       return `<div style="padding:10px 12px;background:var(--bg-1);border:1px solid ${state.socialPostFilter===s.id?s.color:'var(--border)'};border-radius:8px;cursor:pointer;text-align:center;transition:all 0.15s" data-sp-filter="${s.id}">
-        <div style="font-family:'DM Mono',monospace;font-size:9px;color:${s.color};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">${s.label}</div>
+        <div style="font-family:Arial,sans-serif;font-size:9px;color:${s.color};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">${s.label}</div>
         <div style="font-weight:800;font-size:20px;color:var(--text)">${count}</div>
       </div>`;
     }).join('')}
@@ -706,10 +706,10 @@ function renderSocialPlanner() {
             <div style="flex:1">
               <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.content)}</div>
               <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                ${(p.platforms||[]).map(pl => `<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
+                ${(p.platforms||[]).map(pl => `<span style="font-family:Arial,sans-serif;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
               </div>
-              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:4px;padding:5px 12px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
-              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:4px">
+              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:4px;padding:5px 12px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
+              <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:4px">
                 ${p.author?.full_name||'Unknown'} · ${new Date(p.created_at).toLocaleDateString()}
                 ${scheduledDate ? ' · 📅 '+scheduledDate.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : ''}
                 ${p.posted_at ? ' · ✅ Posted '+new Date(p.posted_at).toLocaleDateString() : ''}
@@ -717,7 +717,7 @@ function renderSocialPlanner() {
               ${(p.approvals||[]).length ? `
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                   ${(p.approvals||[]).map(a => `
-                    <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;background:${a.status==='approved'?'var(--green-glow)':a.status==='rejected'?'var(--red-glow)':'var(--amber-glow)'};color:${a.status==='approved'?'var(--green)':a.status==='rejected'?'var(--red)':'var(--amber)'}">${a.approver?.full_name||'?'}: ${a.status}</span>
+                    <span style="font-family:Arial,sans-serif;font-size:10px;padding:3px 8px;border-radius:4px;background:${a.status==='approved'?'var(--green-glow)':a.status==='rejected'?'var(--red-glow)':'var(--amber-glow)'};color:${a.status==='approved'?'var(--green)':a.status==='rejected'?'var(--red)':'var(--amber)'}">${a.approver?.full_name||'?'}: ${a.status}</span>
                   `).join('')}
                 </div>` : ''}
             </div>
@@ -725,11 +725,11 @@ function renderSocialPlanner() {
               <select class="cand-status-select" data-sp-status="${p.id}" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-color:${sc}44;color:${sc}">
                 ${POST_STAGES.map(s => `<option value="${s.id}" ${p.status===s.id||(s.id==='brief'&&p.status==='draft')?'selected':''}>${s.label}</option>`).join('')}
               </select>
-              <button data-delete-social-post="${p.id}" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">Delete</button>
+              <button data-delete-social-post="${p.id}" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:10px">Delete</button>
               ${pendingForMe ? `
                 <div style="display:flex;gap:4px">
-                  <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500">✓ Approve</button>
-                  <button data-reject-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500">✕ Reject</button>
+                  <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-family:Arial,sans-serif;font-size:10px;font-weight:500">✓ Approve</button>
+                  <button data-reject-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:10px;font-weight:500">✕ Reject</button>
                 </div>` : ''}
             </div>
           </div>
@@ -750,41 +750,41 @@ function renderSocialPostModal() {
       </div>
       <form id="social-post-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
-          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7"></textarea>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
+          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;line-height:1.7"></textarea>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap" id="platform-chips">
             ${['LinkedIn','Facebook','Instagram','Twitter'].map(p => `
-              <label style="font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px">
+              <label style="font-family:Arial,sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px">
                 <input type="checkbox" name="platforms" value="${p}" style="accent-color:var(--accent)" /> ${p}
               </label>`).join('')}
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
           <input type="datetime-local" name="scheduled_date" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Stage</label>
-          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Stage</label>
+          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
             ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => `<option value="${s.id}">${s.label} — ${s.desc}</option>`).join('')}
           </select>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Send for Approval To (optional)</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Send for Approval To (optional)</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap" id="approver-chips">
             ${state.team.filter(m => m.id !== currentUser?.id).map(m => `
-              <label style="font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
+              <label style="font-family:Arial,sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
                 <input type="checkbox" name="approvers" value="${m.id}" style="accent-color:var(--accent)" ${['Ali Faruqi','Abu Bakar'].some(n => (m.full_name||'').includes(n)) ? 'checked' : ''} /> ${m.full_name||m.email}
               </label>`).join('')}
             ${state.team.filter(m => m.id !== currentUser?.id).length === 0 ? '<span style="font-size:11px;color:var(--text-3)">No other team members yet</span>' : ''}
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">Create Post</button>
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">Create Post</button>
         </div>
       </form>
     </div>
@@ -812,10 +812,10 @@ function renderAnalyticsView() {
     <div style="display:flex;gap:6px;align-items:center">
       ${[7,14,30,90].map(n => `<button class="stage-chip ${state.analyticsDays===n?'active':''}" data-analytics-days="${n}">${n}d</button>`).join('')}
       <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-        <input type="date" id="analytics-from" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:'DM Mono',monospace;outline:none" />
+        <input type="date" id="analytics-from" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:Arial,sans-serif;outline:none" />
         <span style="color:var(--text-3);font-size:11px">to</span>
-        <input type="date" id="analytics-to" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:'DM Mono',monospace;outline:none" />
-        <button id="btn-analytics-custom" style="padding:6px 12px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">Go</button>
+        <input type="date" id="analytics-to" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:Arial,sans-serif;outline:none" />
+        <button id="btn-analytics-custom" style="padding:6px 12px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:10px">Go</button>
       </div>
     </div>
   </div>
@@ -830,13 +830,13 @@ function renderAnalyticsView() {
         <div style="font-size:11px;color:var(--text-3)">${googleConnected ? 'Pulling real GA4 data alongside our custom tracker' : 'Connect to see official Google Analytics data'}</div>
       </div>
     </div>
-    ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Refresh GA Data</button>`}
+    ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">Refresh GA Data</button>`}
   </div>
 
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);${state.liveVisitors.length?'animation:livePulse 1.5s infinite':''}"></span>
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
     </div>
     ${state.liveVisitors.length === 0 ? `<div style="font-size:12px;color:var(--text-3);padding:8px 0">No one online right now. Visitors appear here within 90 seconds of activity.</div>` : `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
@@ -845,7 +845,7 @@ function renderAnalyticsView() {
           <span style="font-size:22px">${flagFor(v.country)}</span>
           <div style="min-width:0">
             <div style="font-size:12px;font-weight:600;color:var(--text)">${v.country || 'Unknown location'}</div>
-            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.device==='mobile'?'📱':'💻'} ${(v.last_page||'').replace(/^https?:\/\/[^/]+/,'')||'/'}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.device==='mobile'?'📱':'💻'} ${(v.last_page||'').replace(/^https?:\/\/[^/]+/,'')||'/'}</div>
           </div>
         </div>`).join('')}
     </div>`}
@@ -854,17 +854,17 @@ function renderAnalyticsView() {
 
   ${state.gaData ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px">
-    <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
+    <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
     ${state.gaData.error ? `<div style="color:var(--red);font-size:12px">${state.gaData.error}</div>` : `
     <table style="width:100%;font-size:12px">
-      <thead><tr style="color:var(--text-3);font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
+      <thead><tr style="color:var(--text-3);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
       <tbody>
         ${(state.gaData.rows||[]).slice(0,12).map(r => `
           <tr style="border-top:1px solid var(--border-subtle)">
             <td style="padding:8px 0;color:var(--text-2)">${r.dimensionValues[0]?.value || '/'}</td>
             <td style="text-align:right;color:var(--accent);font-weight:600">${r.metricValues[0]?.value || 0}</td>
             <td style="text-align:right;color:var(--text-2)">${r.metricValues[1]?.value || 0}</td>
-            <td style="text-align:right;color:var(--text-3);font-family:'DM Mono',monospace">${Math.round(r.metricValues[2]?.value || 0)}s</td>
+            <td style="text-align:right;color:var(--text-3);font-family:Arial,sans-serif">${Math.round(r.metricValues[2]?.value || 0)}s</td>
           </tr>`).join('')}
       </tbody>
     </table>`}
@@ -880,45 +880,45 @@ function renderAnalyticsView() {
 
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
       ${d.dailyData?.length ? `
       <div style="display:flex;align-items:flex-end;gap:4px;height:140px">
         ${d.dailyData.map(([day, count]) => `
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent-2);font-weight:600">${count}</div>
+            <div style="font-family:Arial,sans-serif;font-size:9px;color:var(--accent-2);font-weight:600">${count}</div>
             <div style="width:100%;background:var(--gradient-accent);border-radius:6px 6px 0 0;height:${Math.max(count/maxDaily*100,6)}px;transition:height 0.5s;box-shadow:0 0 8px rgba(139,92,246,0.2)"></div>
-            <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
+            <div style="font-family:Arial,sans-serif;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
           </div>`).join('')}
       </div>` : '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">No page view data yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
       ${d.topPages.length ? d.topPages.map((p,i) => `
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
+          <span style="font-family:Arial,sans-serif;font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
           <span style="flex:1;font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-2);font-weight:600">${p.count}</span>
+          <span style="font-family:Arial,sans-serif;font-size:11px;color:var(--accent-2);font-weight:600">${p.count}</span>
         </div>`).join('') : '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No page data yet</div>'}
     </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
       ${(d.events||[]).filter(e=>e.event_type==='click').slice(0,8).map(e => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
+          <span style="font-family:Arial,sans-serif;font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
           <span style="flex:1;font-size:11px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.element_text||'(no text)'}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3)">${e.page_url||'/'}</span>
+          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3)">${e.page_url||'/'}</span>
         </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No clicks recorded yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
       ${(d.totalSessions||[]).slice(0,8).map(s => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
           <span style="font-size:12px">${s.device==='mobile'?'📱':'💻'}</span>
           <span style="flex:1;font-size:11px;color:var(--text-2)">${s.pages_viewed||1} pages · ${s.total_time||0}s</span>
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3)">${new Date(s.started_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3)">${new Date(s.started_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
         </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No sessions yet</div>'}
     </div>
   </div>`;
@@ -946,9 +946,9 @@ function renderAgentsView() {
     ${AGENTS.map(a => `
       <div class="rec-pos-card" style="cursor:pointer;padding:24px" data-open-agent="${a.id}">
         <div style="width:52px;height:52px;border-radius:14px;background:${a.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">${a.icon}</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
+        <div style="font-family:Arial,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.6">${a.desc}</div>
-        <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
+        <div style="margin-top:14px;font-family:Arial,sans-serif;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
       </div>`).join('')}
   </div>`;
 }
@@ -958,7 +958,7 @@ function renderAgentDetail() {
   return `
   <div class="page-header">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <button id="btn-back-agents" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">← Back</button>
+      <button id="btn-back-agents" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-3);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">← Back</button>
       <div class="page-title">${a.icon} ${a.name}</div>
     </div>
     <div class="page-sub">${a.desc}</div>
@@ -978,10 +978,10 @@ function renderAgentDetail() {
 function renderTaskAgentUI(a) {
   return `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-card)">
-    <label style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
+    <label style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
       ${a.id==='marketing' ? 'Context (audience, focus, recent wins, etc.)' : a.id==='leadfinder' ? 'Target context (industry, ICP details)' : 'Position details (title, requirements, seniority)'}
     </label>
-    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
+    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
     <button id="btn-run-agent" class="find-leads-btn" ${state.agentLoading?'disabled':''} style="background:${a.color}">
       ${state.agentLoading ? '⏳ Thinking...' : '✨ Run Agent'}
     </button>
@@ -990,7 +990,7 @@ function renderTaskAgentUI(a) {
   ${state.agentOutput ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:16px;box-shadow:var(--shadow-card)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
       <button class="copy-btn" id="btn-copy-agent-output">Copy</button>
     </div>
     <div style="font-size:13px;color:var(--text-2);line-height:1.8;white-space:pre-wrap">${escHtml(state.agentOutput)}</div>
@@ -1025,22 +1025,22 @@ function renderApiKeyModal() {
       </div>
       <form id="api-key-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Provider</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Provider</label>
           <select name="provider" style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
             <option value="openai" ${getProvider()==='openai'?'selected':''}>OpenAI (GPT-4o-mini)</option>
             <option value="anthropic" ${getProvider()==='anthropic'?'selected':''}>Anthropic (Claude Sonnet)</option>
           </select>
         </div>
         <div style="margin-bottom:8px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">API Key</label>
-          <input type="password" name="apiKey" value="${getApiKey()}" placeholder="sk-..." style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace" />
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">API Key</label>
+          <input type="password" name="apiKey" value="${getApiKey()}" placeholder="sk-..." style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" />
         </div>
         <div style="font-size:11px;color:var(--text-3);margin-bottom:18px;line-height:1.6">
           Get a key at <strong>platform.openai.com/api-keys</strong> or <strong>console.anthropic.com</strong>. Stored only in your browser's local storage — never sent to our servers.
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          ${hasApiKey() ? `<button type="button" id="btn-clear-key" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.25);background:var(--red-light);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Remove Key</button>` : ''}
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          ${hasApiKey() ? `<button type="button" id="btn-clear-key" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.25);background:var(--red-light);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Remove Key</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
           <button type="submit" class="find-leads-btn" style="padding:9px 20px">Save</button>
         </div>
       </form>
@@ -1121,17 +1121,17 @@ function renderMapView() {
       <div style="position:absolute;bottom:16px;left:16px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(15,12,30,0.85);backdrop-filter:blur(8px);padding:8px 12px;border-radius:8px;border:1px solid var(--glass-border)">
         ${Object.entries(NODE_TYPE_LABELS).map(([type, label]) => {
           const colorMap = { lead:'#f59e0b', project:'#3b82f6', team:'#a855f7', position:'#10b981', candidate:'#ec4899' };
-          return `<div style="display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:#cfc8ee"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block;box-shadow:0 0 6px ${colorMap[type]}"></span>${label}</div>`;
+          return `<div style="display:flex;align-items:center;gap:5px;font-family:Arial,sans-serif;font-size:10px;color:#cfc8ee"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block;box-shadow:0 0 6px ${colorMap[type]}"></span>${label}</div>`;
         }).join('')}
       </div>
     </div>
     ${selected ? `
     <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-card)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
+        <span style="font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
         <button id="btn-close-node-panel" style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;width:24px;height:24px;cursor:pointer;color:var(--text-3)">✕</button>
       </div>
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
       <div style="font-size:13px;color:var(--text-2)">${selected.sub||''}</div>
     </div>` : ''}
   </div>`;
@@ -1155,29 +1155,29 @@ function submissionCard(s, opts) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <span class="cand-status-pill" style="background:${st.color}1a;color:${st.color};border:1px solid ${st.color}33">${st.label}</span>
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${new Date(s.created_at).toLocaleDateString()} ${new Date(s.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${new Date(s.created_at).toLocaleDateString()} ${new Date(s.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
     </div>
     ${isExpanded ? `
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
       ${opts.renderDetail ? opts.renderDetail(s) : ''}
       <div style="display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">Status:</span>
+        <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase">Status:</span>
         <select class="cand-status-select" data-submission-status="${idPrefix}${s.id}" data-submission-table="${opts.table}">
           ${statusOptions.map(o=>`<option value="${o.id}" ${s[statusField]===o.id?'selected':''}>${o.label}</option>`).join('')}
         </select>
-        <button data-assign-task="${s.id}" data-task-entity-type="${opts.table}" data-task-entity-label="${escHtml(s.full_name)}" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">+ Assign Follow-up</button>
+        <button data-assign-task="${s.id}" data-task-entity-type="${opts.table}" data-task-entity-label="${escHtml(s.full_name)}" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:10px">+ Assign Follow-up</button>
       </div>
       ${(state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id))).length ? `
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Tasks</span>
+          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Tasks</span>
           ${state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id)).map(t => {
             const sc = t.status==='completed'?'#10b981':t.status==='in_progress'?'#6366f1':'#f59e0b';
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-2);border-radius:6px;font-size:12px">
               <span style="width:8px;height:8px;border-radius:50%;background:${sc};flex-shrink:0"></span>
               <span style="flex:1;color:var(--text)">${escHtml(t.title)}</span>
-              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${t.assignee?.full_name||'?'}</span>
-              <span style="font-family:'DM Mono',monospace;font-size:10px;color:${sc}">${t.status.replace('_',' ')}</span>
+              <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${t.assignee?.full_name||'?'}</span>
+              <span style="font-family:Arial,sans-serif;font-size:10px;color:${sc}">${t.status.replace('_',' ')}</span>
               <button data-edit-task="${t.id}" onclick="event.stopPropagation()" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-3);cursor:pointer;font-size:10px">Edit</button>
             </div>`;
           }).join('')}
@@ -1204,7 +1204,7 @@ function renderContactSubmissions() {
       table: 'contact_submissions', idPrefix: 'contact-', statusOptions: CONTACT_STATUSES,
       extraFields: [{key:'company',label:'Company'}],
       renderDetail: (s) => `
-        ${s.service_interest?.length ? `<div style="margin-bottom:10px"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">Interested in:</span> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${s.service_interest.map(i=>`<span class="rec-tag">${i}</span>`).join('')}</div></div>` : ''}
+        ${s.service_interest?.length ? `<div style="margin-bottom:10px"><span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase">Interested in:</span> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${s.service_interest.map(i=>`<span class="rec-tag">${i}</span>`).join('')}</div></div>` : ''}
         ${s.message ? `<div style="font-size:13px;color:var(--text-2);line-height:1.7;background:var(--bg-2);padding:12px 14px;border-radius:8px">${s.message}</div>` : ''}
       `,
     })).join('')}
@@ -1344,7 +1344,7 @@ function renderAIAssessments() {
       extraFields: [{key:'company',label:'Company'},{key:'overall_grade',label:'Grade'}],
       renderDetail: (s) => `
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
-          <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:var(--accent)">${s.overall_score||0}</div>
+          <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:var(--accent)">${s.overall_score||0}</div>
           <div style="font-size:13px;color:var(--text-2)">Overall Score ${s.overall_grade?'· Grade '+s.overall_grade:''}</div>
         </div>
         ${s.category_scores && Object.keys(s.category_scores).length ? `
@@ -1379,13 +1379,13 @@ function renderFilesView() {
             <div>
               <div class="rec-cand-name">${f.full_name}</div>
               <div class="rec-cand-role">${f.email}${f.current_title?' · '+f.current_title:''}</div>
-              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:4px">
+              <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:4px">
                 <span style="background:${f.sourceColor}1a;color:${f.sourceColor};padding:2px 8px;border-radius:4px">${f.source}</span>
                 · ${new Date(f.created_at).toLocaleDateString()}
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <a href="${f.resume_url}" target="_blank" rel="noopener" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;white-space:nowrap">⬇ Download</a>
+              <a href="${f.resume_url}" target="_blank" rel="noopener" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-family:Arial,sans-serif;font-size:11px;font-weight:600;white-space:nowrap">⬇ Download</a>
             </div>
           </div>
         </div>
@@ -1399,10 +1399,10 @@ function renderNotifPanel() {
   return `
   <div id="notif-panel" style="position:fixed;top:0;right:0;width:360px;height:100vh;background:var(--bg-1);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.4);animation:slideIn 0.2s ease">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)">
-      <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
+      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
       <div style="display:flex;gap:8px">
-        <button id="btn-mark-all-read" style="font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
-        <button id="btn-close-notif" style="font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
+        <button id="btn-mark-all-read" style="font-family:Arial,sans-serif;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
+        <button id="btn-close-notif" style="font-family:Arial,sans-serif;font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
       </div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:8px">
@@ -1411,7 +1411,7 @@ function renderNotifPanel() {
         <div style="padding:12px 14px;border-radius:8px;margin-bottom:4px;background:${n.read?'transparent':'var(--accent-glow)'};cursor:pointer;transition:background 0.15s" data-notif-id="${n.id}" data-notif-link="${n.link||''}">
           <div style="font-size:12px;font-weight:${n.read?'400':'600'};color:var(--text);margin-bottom:3px">${n.title}</div>
           <div style="font-size:11px;color:var(--text-2);line-height:1.5">${n.body||''}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
+          <div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
         </div>`).join('')}
     </div>
   </div>
@@ -1433,30 +1433,30 @@ function renderAuthScreen() {
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg);padding:20px">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:32px">
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
-        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
+        <div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
       </div>
       <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:28px 32px">
         <div style="display:flex;gap:0;margin-bottom:24px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
-          <button class="auth-tab ${isLogin?'active':''}" data-authview="login" style="flex:1;padding:10px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;background:${isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign In</button>
-          <button class="auth-tab ${!isLogin?'active':''}" data-authview="signup" style="flex:1;padding:10px;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;background:${!isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${!isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign Up</button>
+          <button class="auth-tab ${isLogin?'active':''}" data-authview="login" style="flex:1;padding:10px;border:none;cursor:pointer;font-family:Arial,sans-serif;font-size:12px;background:${isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign In</button>
+          <button class="auth-tab ${!isLogin?'active':''}" data-authview="signup" style="flex:1;padding:10px;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:Arial,sans-serif;font-size:12px;background:${!isLogin?'var(--accent-glow)':'var(--bg-3)'};color:${!isLogin?'var(--accent-2)':'var(--text-3)'};transition:all 0.15s">Sign Up</button>
         </div>
-        ${state.authError ? `<div style="padding:10px 12px;background:var(--red-glow);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:12px;color:var(--red);font-family:'DM Mono',monospace;margin-bottom:16px">${state.authError}</div>` : ''}
+        ${state.authError ? `<div style="padding:10px 12px;background:var(--red-glow);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:12px;color:var(--red);font-family:Arial,sans-serif;margin-bottom:16px">${state.authError}</div>` : ''}
         <form id="auth-form">
           ${!isLogin ? `
           <div style="margin-bottom:14px">
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
-            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="Amish Mirza" />
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="Amish Mirza" />
           </div>` : ''}
           <div style="margin-bottom:14px">
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
-            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="you@itimpact.com" />
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="you@itimpact.com" />
           </div>
           <div style="margin-bottom:20px">
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
-            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Manrope,sans-serif" placeholder="••••••••" />
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
+            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="••••••••" />
           </div>
-          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Manrope,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
+          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading?'disabled':''}>
             ${state.authLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
@@ -1508,7 +1508,7 @@ function renderLeads() {
             <div>
               <div class="rec-cand-name">${l.name}</div>
               <div class="rec-cand-role">${l.company||'No company'}${l.email?' · '+l.email:''}</div>
-              ${l.value ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-top:2px">$${l.value.toLocaleString()}</div>` : ''}
+              ${l.value ? `<div style="font-family:Arial,sans-serif;font-size:11px;color:var(--green);margin-top:2px">$${l.value.toLocaleString()}</div>` : ''}
             </div>
             <div class="rec-cand-actions">
               <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
@@ -1518,7 +1518,7 @@ function renderLeads() {
             </div>
           </div>
           ${l.notes ? `<div class="rec-cand-summary">${l.notes}</div>` : ''}
-          <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:4px">
+          <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:4px">
             ${l.source||'manual'} · ${new Date(l.created_at).toLocaleDateString()}
             ${l.assigned?.full_name ? ' · → '+l.assigned.full_name : ''}
           </div>
@@ -1541,55 +1541,55 @@ function renderLeadModal() {
       <form id="lead-form" style="padding:20px 28px 24px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Name *</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Name *</label>
             <input type="text" name="name" required value="${escHtml(l.name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Company</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Company</label>
             <input type="text" name="company" value="${escHtml(l.company||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
             <input type="email" name="email" value="${escHtml(l.email||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
             <input type="text" name="phone" value="${escHtml(l.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Value ($)</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Value ($)</label>
             <input type="number" name="value" value="${l.value||0}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Source</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Source</label>
             <input type="text" name="source" value="${escHtml(l.source||'manual')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To</label>
-            <select name="assigned_to" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To</label>
+            <select name="assigned_to" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
               <option value="">Unassigned</option>
               ${state.team.map(m => `<option value="${m.id}" ${l.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
             <input type="date" name="due_date" value="${l.due_date||''}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
-          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Manrope,sans-serif">${escHtml(l.notes||'')}</textarea>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
+          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Arial,sans-serif">${escHtml(l.notes||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
+          ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Delete</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
         </div>
       </form>
     </div>
@@ -1610,41 +1610,41 @@ function renderTaskModal() {
         <button class="modal-close" id="modal-close">✕</button>
       </div>
       <form id="task-form" style="padding:20px 28px 24px">
-        ${ctx.entity_label ? `<div style="padding:8px 12px;background:var(--bg-2);border-radius:8px;font-size:12px;color:var(--text-3);margin-bottom:14px;font-family:'DM Mono',monospace">Linked to: <strong style="color:var(--text)">${escHtml(ctx.entity_label)}</strong></div>` : ''}
+        ${ctx.entity_label ? `<div style="padding:8px 12px;background:var(--bg-2);border-radius:8px;font-size:12px;color:var(--text-3);margin-bottom:14px;font-family:Arial,sans-serif">Linked to: <strong style="color:var(--text)">${escHtml(ctx.entity_label)}</strong></div>` : ''}
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Task Title *</label>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Task Title *</label>
           <input type="text" name="title" required value="${escHtml(t.title||'')}" placeholder="e.g. Send proposal, Follow up call, Review CV" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To *</label>
-            <select name="assigned_to" required style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To *</label>
+            <select name="assigned_to" required style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
               <option value="">Select person...</option>
               ${state.team.map(m => `<option value="${m.id}" ${t.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
+            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
             <input type="date" name="due_date" value="${t.due_date||today}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Description (optional)</label>
-          <textarea name="description" rows="3" placeholder="Any additional context..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.6">${escHtml(t.description||'')}</textarea>
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Description (optional)</label>
+          <textarea name="description" rows="3" placeholder="Any additional context..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Arial,sans-serif;line-height:1.6">${escHtml(t.description||'')}</textarea>
         </div>
         ${isEdit ? `
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
-          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
+          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
             <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
             <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
             <option value="completed" ${t.status==='completed'?'selected':''}>Completed</option>
           </select>
         </div>` : ''}
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          ${isEdit ? `<button type="button" id="btn-delete-task" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete Task</button>` : ''}
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save' : 'Assign Task'}</button>
+          ${isEdit ? `<button type="button" id="btn-delete-task" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Delete Task</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save' : 'Assign Task'}</button>
         </div>
       </form>
     </div>
@@ -1690,7 +1690,7 @@ function renderTasksView() {
               <div class="rec-cand-name">${escHtml(t.title)}</div>
               <div class="rec-cand-role">→ ${t.assignee?.full_name||'Unassigned'}${t.entity_label?' · '+t.entity_label:''}</div>
               ${t.description ? `<div class="rec-cand-summary">${escHtml(t.description)}</div>` : ''}
-              <div style="font-size:10px;color:${overdue?'var(--red)':'var(--text-3)'};font-family:'DM Mono',monospace;margin-top:2px">
+              <div style="font-size:10px;color:${overdue?'var(--red)':'var(--text-3)'};font-family:Arial,sans-serif;margin-top:2px">
                 ${t.due_date ? (overdue?'⚠ Overdue: ':'Due: ')+new Date(t.due_date).toLocaleDateString() : 'No due date'}
                 ${t.completed_at ? ' · Completed '+new Date(t.completed_at).toLocaleDateString() : ''}
               </div>
@@ -1756,7 +1756,7 @@ function renderProjectDetail() {
   return `
   <div class="page-header">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <button id="btn-back-projects" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">← Back</button>
+      <button id="btn-back-projects" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">← Back</button>
       <div class="page-title">${p.name}</div>
     </div>
     <div class="page-sub">${p.description||''}</div>
@@ -1779,10 +1779,10 @@ function renderMessageBoard() {
   return `
   <div style="margin-bottom:20px">
     <form id="new-message-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-      <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Manrope,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
-      <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;min-height:60px"></textarea>
+      <input type="text" name="title" placeholder="Message title..." required style="width:100%;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:500;outline:none;font-family:Arial,sans-serif;border-bottom:1px solid var(--border);margin-bottom:12px" />
+      <textarea name="body" placeholder="Write your message..." rows="3" style="width:100%;padding:8px 0;background:transparent;border:none;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;min-height:60px"></textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
-        <button type="submit" style="padding:8px 18px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Post Message</button>
+        <button type="submit" style="padding:8px 18px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Post Message</button>
       </div>
     </form>
   </div>
@@ -1790,13 +1790,13 @@ function renderMessageBoard() {
     <div class="outreach-prospect-block" style="margin-bottom:14px">
       <div style="padding:16px 20px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Manrope,sans-serif">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Arial,sans-serif">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
           <div>
             <div style="font-size:12px;font-weight:500;color:var(--text)">${m.author?.full_name||'Unknown'}</div>
-            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${new Date(m.created_at).toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif">${new Date(m.created_at).toLocaleString()}</div>
           </div>
         </div>
-        <div style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">${m.title}</div>
+        <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">${m.title}</div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.7;white-space:pre-wrap">${m.body||''}</div>
       </div>
     </div>`).join('')}
@@ -1808,27 +1808,27 @@ function renderTodos() {
   <div style="margin-bottom:16px">
     <form id="new-todolist-form" style="display:flex;gap:8px">
       <input type="text" name="listName" placeholder="New to-do list name..." required style="flex:1;padding:10px 14px;background:var(--bg-1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none" />
-      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">+ Add List</button>
+      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:12px;white-space:nowrap">+ Add List</button>
     </form>
   </div>
   ${state.projectTodoLists.map(list => `
     <div class="outreach-prospect-block" style="margin-bottom:14px">
       <div class="outreach-prospect-header">
         <div class="outreach-prospect-name">${list.name}</div>
-        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">${(list.todos||[]).filter(t=>t.completed).length}/${(list.todos||[]).length} done</span>
+        <span style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3)">${(list.todos||[]).filter(t=>t.completed).length}/${(list.todos||[]).length} done</span>
       </div>
       <div style="padding:12px 20px">
         ${(list.todos||[]).map(t => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-subtle)" data-todo-id="${t.id}">
             <input type="checkbox" ${t.completed?'checked':''} data-toggle-todo="${t.id}" style="accent-color:var(--accent);cursor:pointer" />
             <span style="flex:1;font-size:13px;color:${t.completed?'var(--text-3)':'var(--text)'};${t.completed?'text-decoration:line-through':''}">${t.title}</span>
-            ${t.assignee?.full_name ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent-2);background:var(--accent-glow);padding:2px 8px;border-radius:4px">${t.assignee.full_name}</span>` : ''}
-            ${t.due_date ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber)">${t.due_date}</span>` : ''}
+            ${t.assignee?.full_name ? `<span style="font-family:Arial,sans-serif;font-size:10px;color:var(--accent-2);background:var(--accent-glow);padding:2px 8px;border-radius:4px">${t.assignee.full_name}</span>` : ''}
+            ${t.due_date ? `<span style="font-family:Arial,sans-serif;font-size:10px;color:var(--amber)">${t.due_date}</span>` : ''}
             <button data-delete-todo="${t.id}" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:12px;padding:2px 4px" title="Delete">✕</button>
           </div>`).join('')}
         <form class="add-todo-form" data-list-id="${list.id}" style="display:flex;gap:8px;margin-top:10px">
           <input type="text" name="title" placeholder="Add a to-do..." required style="flex:1;padding:8px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
-          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Add</button>
+          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">Add</button>
         </form>
       </div>
     </div>`).join('')}
@@ -1840,14 +1840,14 @@ function renderSchedule() {
   <form id="new-event-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 120px 100px;gap:10px;align-items:end">
       <div>
-        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Event Title</label>
+        <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Event Title</label>
         <input type="text" name="title" required placeholder="Meeting, deadline, milestone..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
       </div>
       <div>
-        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Date</label>
+        <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Date</label>
         <input type="date" name="date" required style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
       </div>
-      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Add</button>
+      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Add</button>
     </div>
   </form>
   ${state.projectEvents.map(e => {
@@ -1856,8 +1856,8 @@ function renderSchedule() {
     return `
     <div style="display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border-subtle)">
       <div style="min-width:48px;text-align:center">
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:20px;color:${isPast?'var(--text-3)':'var(--accent-2)'};line-height:1">${d.getDate()}</div>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase">${d.toLocaleString('en',{month:'short'})}</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:20px;color:${isPast?'var(--text-3)':'var(--accent-2)'};line-height:1">${d.getDate()}</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase">${d.toLocaleString('en',{month:'short'})}</div>
       </div>
       <div>
         <div style="font-size:14px;font-weight:500;color:${isPast?'var(--text-3)':'var(--text)'}">${e.title}</div>
@@ -1871,15 +1871,15 @@ function renderSchedule() {
 function renderChat() {
   return `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 280px)">
-    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-family:Manrope,sans-serif;font-weight:700;font-size:14px;color:var(--text)">🔥 Campfire</div>
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:var(--text)">🔥 Campfire</div>
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
       ${state.projectChat.map(m => {
         const isMe = m.author_id === currentUser?.id;
         return `
         <div style="display:flex;gap:10px;align-items:flex-start;${isMe?'flex-direction:row-reverse':''}">
-          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,${isMe?'var(--green)':'var(--accent)'},${isMe?'#059669':'#4f46e5'});display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,${isMe?'var(--green)':'var(--accent)'},${isMe?'#059669':'#4f46e5'});display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0">${(m.author?.full_name||'?')[0].toUpperCase()}</div>
           <div style="max-width:70%;${isMe?'text-align:right':''}">
-            <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-bottom:3px">${m.author?.full_name||'Unknown'} · ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif;margin-bottom:3px">${m.author?.full_name||'Unknown'} · ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
             <div style="padding:10px 14px;border-radius:10px;background:${isMe?'var(--accent-glow)':'var(--bg-3)'};font-size:13px;color:var(--text-2);line-height:1.6;display:inline-block;text-align:left">${m.body}</div>
           </div>
         </div>`;
@@ -1888,7 +1888,7 @@ function renderChat() {
     </div>
     <form id="chat-form" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
       <input type="text" name="message" placeholder="Type a message..." required autocomplete="off" style="flex:1;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none" />
-      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Send</button>
+      <button type="submit" style="padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Send</button>
     </form>
   </div>`;
 }
@@ -1898,18 +1898,18 @@ function renderCheckinView() {
   <form id="new-checkin-form" style="background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 120px 80px;gap:10px;align-items:end">
       <div>
-        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Check-in Question</label>
+        <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Check-in Question</label>
         <input type="text" name="question" required placeholder="What did you work on today?" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
       </div>
       <div>
-        <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Frequency</label>
+        <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;display:block;margin-bottom:6px">Frequency</label>
         <select name="frequency" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
         </select>
       </div>
-      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Add</button>
+      <button type="submit" style="padding:9px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Add</button>
     </div>
   </form>
   ${state.projectCheckins.map(c => `
@@ -1917,7 +1917,7 @@ function renderCheckinView() {
       <div class="outreach-prospect-header">
         <div>
           <div class="outreach-prospect-name">❓ ${c.question}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:2px">${c.frequency} · ${(c.responses||[]).length} responses</div>
+          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:2px">${c.frequency} · ${(c.responses||[]).length} responses</div>
         </div>
       </div>
       <div style="padding:12px 20px">
@@ -1925,13 +1925,13 @@ function renderCheckinView() {
           <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
               <span style="font-size:12px;font-weight:500;color:var(--text)">${r.author?.full_name||'Unknown'}</span>
-              <span style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${new Date(r.created_at).toLocaleDateString()}</span>
+              <span style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif">${new Date(r.created_at).toLocaleDateString()}</span>
             </div>
             <div style="font-size:12px;color:var(--text-2);line-height:1.6">${r.body}</div>
           </div>`).join('')}
         <form class="checkin-respond-form" data-checkin-id="${c.id}" style="display:flex;gap:8px;margin-top:10px">
           <input type="text" name="response" placeholder="Your response..." required style="flex:1;padding:8px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
-          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">Reply</button>
+          <button type="submit" style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">Reply</button>
         </form>
       </div>
     </div>`).join('')}
@@ -1992,25 +1992,25 @@ function renderSidebar() {
     <div style="padding:4px 16px 8px;display:flex;justify-content:flex-end;gap:6px;align-items:center">
       <button id="btn-theme-toggle" class="theme-toggle">${state.darkMode?'☀️ Light':'🌙 Dark'}</button>
       <button id="btn-notif-toggle" style="position:relative;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--text-2);font-size:14px;transition:all 0.15s">
-        🔔${state.unreadCount > 0 ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center">${state.unreadCount}</span>` : ''}
+        🔔${state.unreadCount > 0 ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-family:Arial,sans-serif;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center">${state.unreadCount}</span>` : ''}
       </button>
     </div>
-    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:8px 12px 4px">CRM</div></div>
+    <div style="padding:0 12px 6px"><div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:8px 12px 4px">CRM</div></div>
     ${navItems.filter(n=>n.section==='crm').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
       </div>`).join('')}
-    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Website Forms</div></div>
+    <div style="padding:0 12px 6px"><div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Website Forms</div></div>
     ${navItems.filter(n=>n.section==='website').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
       </div>`).join('')}
-    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Sales</div></div>
+    <div style="padding:0 12px 6px"><div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Sales</div></div>
     ${navItems.filter(n=>n.section==='sales').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
       </div>`).join('')}
-    <div style="padding:0 12px 6px"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Tools</div></div>
+    <div style="padding:0 12px 6px"><div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;padding:12px 12px 4px">Tools</div></div>
     ${navItems.filter(n=>n.section==='tools').map(n=>`
       <div class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
         <span class="nav-icon">${n.icon}</span>${n.label}
@@ -2018,13 +2018,13 @@ function renderSidebar() {
     <div class="sidebar-footer">
       ${profile ? `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Manrope,sans-serif">${(profile.full_name||profile.email||'?')[0].toUpperCase()}</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:Arial,sans-serif">${(profile.full_name||profile.email||'?')[0].toUpperCase()}</div>
           <div>
             <div style="font-size:11px;color:var(--text);font-weight:500">${profile.full_name||profile.email}</div>
             <div style="font-size:9px;color:var(--text-3)">${profile.role}</div>
           </div>
         </div>
-        <button class="logout-btn" id="btn-logout" style="font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;width:100%;transition:all 0.15s">Sign Out</button>
+        <button class="logout-btn" id="btn-logout" style="font-family:Arial,sans-serif;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;width:100%;transition:all 0.15s">Sign Out</button>
       ` : ''}
       ${state.dbStatus === 'connected'
         ? '<div style="margin-top:8px;color:#10b981;font-size:10px">● Database live</div>'
@@ -2553,62 +2553,62 @@ function renderHome() {
     <!-- Greeting bar -->
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
-        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
+        <div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
       </div>
       ${pendingPosts > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.07);cursor:pointer" data-nav="social-planner">
         <span style="font-size:13px;color:#f59e0b;font-weight:700">${pendingPosts} post${pendingPosts>1?'s':''} awaiting approval</span>
-        <span style="font-size:11px;color:#f59e0b;font-family:'DM Mono',monospace">Review →</span>
+        <span style="font-size:11px;color:#f59e0b;font-family:Arial,sans-serif">Review →</span>
       </div>` : ''}
       ${state.contactSubmissions.filter(c=>c.status==='new').length > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(249,115,22,0.35);background:rgba(249,115,22,0.07);cursor:pointer" data-nav="contact-subs">
         <span style="font-size:13px;color:#f97316;font-weight:700">${state.contactSubmissions.filter(c=>c.status==='new').length} new enquir${state.contactSubmissions.filter(c=>c.status==='new').length>1?'ies':'y'}</span>
-        <span style="font-size:11px;color:#f97316;font-family:'DM Mono',monospace">View →</span>
+        <span style="font-size:11px;color:#f97316;font-family:Arial,sans-serif">View →</span>
       </div>` : ''}
     </div>
 
     <!-- KPI grid: 4 across -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
       </div>
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${fmt$(wonValue)} won</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${fmt$(wonValue)} won</div>
       </div>
       <div class="home-kpi-card" data-nav="projects">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${completedProjects} completed</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${completedProjects} completed</div>
       </div>
       <div class="home-kpi-card" data-nav="job-apps">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${totalCandidates} total candidates</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${totalCandidates} total candidates</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
       <div class="home-kpi-card" data-nav="social-planner">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
       </div>
       <div class="home-kpi-card" data-nav="team">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">active users</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">active users</div>
       </div>
       <div class="home-kpi-card" data-nav="tasks">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
       </div>
       <div class="home-kpi-card" data-nav="contact-subs">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${state.contactSubmissions.length} total</div>
+        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
+        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${state.contactSubmissions.length} total</div>
       </div>
     </div>
 
@@ -2629,7 +2629,7 @@ function renderHome() {
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                 <span style="font-size:12px;font-weight:600;color:var(--text-2)">${s.label}</span>
-                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3)">${count}</span>
+                <span style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3)">${count}</span>
               </div>
               <div style="height:6px;border-radius:3px;background:var(--bg-1);overflow:hidden">
                 <div style="height:100%;border-radius:3px;background:${s.color};width:${pct||0}%;transition:width 0.4s"></div>
@@ -2650,14 +2650,14 @@ function renderHome() {
             ? '<div style="text-align:center;padding:24px;color:var(--text-3);font-family:DM Mono,monospace;font-size:11px">No activity yet</div>'
             : recentActivity.map(a => `
             <div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
-              <div style="width:32px;height:32px;border-radius:8px;background:${a.bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">${a.initials}</div>
+              <div style="width:32px;height:32px;border-radius:8px;background:${a.bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0">${a.initials}</div>
               <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.label}</div>
-                <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${a.sub}</div>
+                <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif">${a.sub}</div>
               </div>
               <div style="text-align:right;flex-shrink:0">
                 ${a.val ? `<div style="font-size:12px;font-weight:700;color:var(--text)">${a.val}</div>` : ''}
-                <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${timeAgo(a.time)}</div>
+                <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif">${timeAgo(a.time)}</div>
               </div>
             </div>`).join('')}
         </div>
@@ -2677,7 +2677,7 @@ function renderHome() {
               const sc = t.status==='in_progress'?'#6366f1':'#f59e0b';
               return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:var(--bg-2);border-left:3px solid ${overdue?'#ef4444':sc}">
                 <span style="flex:1;font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.title)}</span>
-                <span style="font-size:9px;color:${overdue?'#ef4444':'var(--text-3)'};font-family:'DM Mono',monospace;flex-shrink:0">${t.due_date?new Date(t.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
+                <span style="font-size:9px;color:${overdue?'#ef4444':'var(--text-3)'};font-family:Arial,sans-serif;flex-shrink:0">${t.due_date?new Date(t.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
               </div>`;
             }).join('')}
           </div>
@@ -2712,7 +2712,7 @@ function renderHome() {
             ].map(r=>`
             <div style="display:flex;align-items:center;justify-content:space-between">
               <span style="font-size:12px;color:var(--text-2)">${r.label}</span>
-              <span style="font-size:10px;font-family:'DM Mono',monospace;padding:2px 9px;border-radius:20px;background:${r.ok?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.08)'};color:${r.ok?'#10b981':'var(--red)'}">
+              <span style="font-size:10px;font-family:Arial,sans-serif;padding:2px 9px;border-radius:20px;background:${r.ok?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.08)'};color:${r.ok?'#10b981':'var(--red)'}">
                 ${r.ok?'● on':'○ off'}
               </span>
             </div>`).join('')}
@@ -4455,7 +4455,7 @@ async function boot() {
 
   // Show loading state
   document.getElementById('app').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080d;color:#9494b0;font-family:'DM Mono',monospace;font-size:12px;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080d;color:#9494b0;font-family:Arial,sans-serif;font-size:12px;flex-direction:column;gap:12px">
       <div style="width:24px;height:24px;border:2px solid rgba(99,102,241,0.3);border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></div>
       ${DB_ENABLED ? 'Connecting...' : 'Loading…'}
     </div>
