@@ -9,7 +9,8 @@ import { initAuth, currentUser, currentProfile, signIn, signUp, signOut, getTeam
 import { LEAD_STATUSES, fetchLeads, createLead, updateLead, deleteLead } from './leads.js';
 import { fetchTeamMembers as fetchTeam, updateProfile } from './team.js';
 import { fetchArticles, createArticle, updateArticle, deleteArticle } from './articles.js';
-import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost } from './social-planner.js';
+import { fetchSocialPosts, createSocialPost, approvePost, updatePostStatus, deleteSocialPost, batchCreateJulyPlan, POST_STAGES, getStage } from './social-planner.js';
+import { fetchTasks, createTask, updateTask, deleteTask } from './tasks.js';
 import { fetchNotifications, getUnreadCount, markAsRead, markAllRead, sendNotification, subscribeToNotifications } from './notifications.js';
 import { fetchAnalyticsOverview, fetchLiveVisitors, flagFor } from './analytics.js';
 import { getApiKey, getProvider, setApiKey, clearApiKey, hasApiKey, runMarketingPlannerAgent, runLeadFinderAgent, runHRHeadhunterAgent, runChatAssistant, runJarvis } from './ai-agents.js';
@@ -143,6 +144,12 @@ const state = {
   jobAppFilter: 'all',
   showAddCVModal: false,
   expandedSubmission: null,
+  // Tasks
+  tasks: [],
+  taskModal: null,   // 'new' | 'edit'
+  taskEditData: null,
+  taskFilter: 'all', // 'all' | 'todo' | 'in_progress' | 'completed'
+  taskEntityContext: null, // { entity_type, entity_id, entity_label } when opening from a card
   // Agents
   activeAgent: null,
   agentLoading: false,
@@ -600,8 +607,28 @@ function renderArticleModal() {
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Content</label>
-          <textarea name="body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Content</label>
+            <button type="button" id="btn-ai-write" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;display:flex;align-items:center;gap:5px">✨ AI Write</button>
+          </div>
+          <div id="ai-write-panel" style="display:none;margin-bottom:10px;padding:12px;background:var(--bg-2);border-radius:8px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="ai-topic" placeholder="Article topic or instructions..." style="flex:1;min-width:180px;padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
+              <select id="ai-tone" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+                <option value="professional">Professional</option>
+                <option value="authoritative">Authoritative</option>
+                <option value="conversational">Conversational</option>
+              </select>
+              <select id="ai-length" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Mono',monospace">
+                <option value="medium">Medium (~800 words)</option>
+                <option value="short">Short (~500 words)</option>
+                <option value="long">Long (~1500 words)</option>
+              </select>
+              <button type="button" id="btn-ai-generate" style="padding:8px 14px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:12px">Generate</button>
+            </div>
+            <div id="ai-write-status" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);margin-top:8px"></div>
+          </div>
+          <textarea name="body" id="article-body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
           ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete</button>` : ''}
@@ -618,15 +645,30 @@ function renderArticleModal() {
 
 // ── Social Planner View ──────────────────────────────────────────────
 function renderSocialPlanner() {
-  const statuses = ['all','draft','pending_approval','approved','rejected','scheduled','published'];
+  const stageIds = ['all', ...POST_STAGES.map(s => s.id)];
   const filtered = state.socialPostFilter === 'all' ? state.socialPosts : state.socialPosts.filter(p => p.status === state.socialPostFilter);
+  const julyExists = state.socialPosts.some(p => p.notes === 'Part of July 2026 social media plan');
   return `
   <div class="page-header pipe-header">
     <div>
       <div class="page-title">Social Media Planner</div>
-      <div class="page-sub">${state.socialPosts.length} posts · approval workflow</div>
+      <div class="page-sub">${state.socialPosts.length} posts · 6-stage approval workflow</div>
     </div>
-    <button class="find-leads-btn" id="btn-new-social-post">+ New Post</button>
+    <div style="display:flex;gap:8px">
+      ${!julyExists ? `<button class="btn-ghost" id="btn-july-plan" style="font-size:12px">📅 Load July Plan</button>` : ''}
+      <button class="find-leads-btn" id="btn-new-social-post">+ New Post</button>
+    </div>
+  </div>
+
+  <!-- Stage pipeline bar -->
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:18px">
+    ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => {
+      const count = state.socialPosts.filter(p => p.status === s.id || (s.id === 'brief' && (p.status === 'draft' || !p.status))).length;
+      return `<div style="padding:10px 12px;background:var(--bg-1);border:1px solid ${state.socialPostFilter===s.id?s.color:'var(--border)'};border-radius:8px;cursor:pointer;text-align:center;transition:all 0.15s" data-sp-filter="${s.id}">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:${s.color};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">${s.label}</div>
+        <div style="font-weight:800;font-size:20px;color:var(--text)">${count}</div>
+      </div>`;
+    }).join('')}
   </div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:${state.linkedinConnected?'var(--green-light)':'var(--bg-1)'};border:1px solid ${state.linkedinConnected?'rgba(16,185,129,0.25)':'var(--border)'};border-radius:var(--radius);margin-bottom:18px">
@@ -634,36 +676,43 @@ function renderSocialPlanner() {
       <span style="font-size:18px">💼</span>
       <div style="font-weight:700;font-size:13px;color:var(--text)">LinkedIn ${state.linkedinConnected?'— Connected ✓':'— Not Connected'}</div>
     </div>
-    ${!state.linkedinConnected ? `<button class="find-leads-btn" id="btn-connect-linkedin" style="padding:8px 16px;font-size:12px">Connect LinkedIn</button>` : ''}
+    <div style="display:flex;gap:8px">
+      ${!state.linkedinConnected ? `<button class="find-leads-btn" id="btn-connect-linkedin" style="padding:8px 16px;font-size:12px">Connect LinkedIn</button>` : ''}
+      <button class="btn-ghost" id="btn-connect-instagram" style="padding:8px 16px;font-size:12px">📸 Connect Instagram</button>
+      <button class="btn-ghost" id="btn-connect-facebook" style="padding:8px 16px;font-size:12px">📘 Connect Facebook</button>
+    </div>
   </div>
 
   <div class="stage-bar" style="margin-bottom:20px">
-    ${statuses.map(s => {
-      const count = s==='all' ? state.socialPosts.length : state.socialPosts.filter(p=>p.status===s).length;
-      const label = s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-      return `<div class="stage-chip ${state.socialPostFilter===s?'active':''}" data-sp-filter="${s}">${label} (${count})</div>`;
+    <div class="stage-chip ${state.socialPostFilter==='all'?'active':''}" data-sp-filter="all">All (${state.socialPosts.length})</div>
+    ${POST_STAGES.map(s => {
+      const count = state.socialPosts.filter(p => p.status === s.id || (s.id === 'brief' && p.status === 'draft')).length;
+      return `<div class="stage-chip ${state.socialPostFilter===s.id?'active':''}" data-sp-filter="${s.id}" style="${state.socialPostFilter===s.id?'border-color:'+s.color+';color:'+s.color:''}">${s.label} (${count})</div>`;
     }).join('')}
   </div>
+
   <div class="rec-cands-list">
     ${filtered.map(p => {
-      const statusColors = {draft:'#5a5a72',pending_approval:'#f59e0b',approved:'#10b981',rejected:'#ef4444',scheduled:'#6366f1',published:'#10b981'};
-      const sc = statusColors[p.status]||'#5a5a72';
+      const stage = getStage(p.status);
+      const sc = stage.color;
       const pendingForMe = (p.approvals||[]).find(a => a.approver_id === currentUser?.id && a.status === 'pending');
       const canPublish = state.linkedinConnected && (p.platforms||[]).includes('LinkedIn') && p.status === 'approved';
+      const scheduledDate = p.scheduled_date ? new Date(p.scheduled_date) : null;
       return `
       <div class="rec-cand-card">
-        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,${sc},${sc}cc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📱</div>
+        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,${sc},${sc}aa);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📱</div>
         <div class="rec-cand-body">
           <div class="rec-cand-top">
             <div style="flex:1">
-              <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.content}</div>
+              <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.content)}</div>
               <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
                 ${(p.platforms||[]).map(pl => `<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
               </div>
-              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:6px;padding:6px 14px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
-              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">
+              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:4px;padding:5px 12px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:4px">
                 ${p.author?.full_name||'Unknown'} · ${new Date(p.created_at).toLocaleDateString()}
-                ${p.scheduled_date ? ' · 📅 '+new Date(p.scheduled_date).toLocaleDateString() : ''}
+                ${scheduledDate ? ' · 📅 '+scheduledDate.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : ''}
+                ${p.posted_at ? ' · ✅ Posted '+new Date(p.posted_at).toLocaleDateString() : ''}
               </div>
               ${(p.approvals||[]).length ? `
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
@@ -673,7 +722,10 @@ function renderSocialPlanner() {
                 </div>` : ''}
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
-              <span class="cand-status-pill" style="background:${sc}22;color:${sc};border:1px solid ${sc}44">${p.status.replace(/_/g,' ')}</span>
+              <select class="cand-status-select" data-sp-status="${p.id}" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-color:${sc}44;color:${sc}">
+                ${POST_STAGES.map(s => `<option value="${s.id}" ${p.status===s.id||(s.id==='brief'&&p.status==='draft')?'selected':''}>${s.label}</option>`).join('')}
+              </select>
+              <button data-delete-social-post="${p.id}" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">Delete</button>
               ${pendingForMe ? `
                 <div style="display:flex;gap:4px">
                   <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;font-weight:500">✓ Approve</button>
@@ -684,7 +736,7 @@ function renderSocialPlanner() {
         </div>
       </div>`;
     }).join('')}
-    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No posts yet. Click "+ New Post" to create one.</div>' : ''}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No posts in this stage.</div>' : ''}
   </div>`;
 }
 
@@ -714,12 +766,18 @@ function renderSocialPostModal() {
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
           <input type="datetime-local" name="scheduled_date" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Stage</label>
+          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+            ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => `<option value="${s.id}">${s.label} — ${s.desc}</option>`).join('')}
+          </select>
+        </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Requires Approval From</label>
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Send for Approval To (optional)</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap" id="approver-chips">
             ${state.team.filter(m => m.id !== currentUser?.id).map(m => `
               <label style="font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" name="approvers" value="${m.id}" style="accent-color:var(--accent)" /> ${m.full_name||m.email}
+                <input type="checkbox" name="approvers" value="${m.id}" style="accent-color:var(--accent)" ${['Ali Faruqi','Abu Bakar'].some(n => (m.full_name||'').includes(n)) ? 'checked' : ''} /> ${m.full_name||m.email}
               </label>`).join('')}
             ${state.team.filter(m => m.id !== currentUser?.id).length === 0 ? '<span style="font-size:11px;color:var(--text-3)">No other team members yet</span>' : ''}
           </div>
@@ -1108,7 +1166,22 @@ function submissionCard(s, opts) {
         <select class="cand-status-select" data-submission-status="${idPrefix}${s.id}" data-submission-table="${opts.table}">
           ${statusOptions.map(o=>`<option value="${o.id}" ${s[statusField]===o.id?'selected':''}>${o.label}</option>`).join('')}
         </select>
+        <button data-assign-task="${s.id}" data-task-entity-type="${opts.table}" data-task-entity-label="${escHtml(s.full_name)}" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px">+ Assign Follow-up</button>
       </div>
+      ${(state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id))).length ? `
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Tasks</span>
+          ${state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id)).map(t => {
+            const sc = t.status==='completed'?'#10b981':t.status==='in_progress'?'#6366f1':'#f59e0b';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-2);border-radius:6px;font-size:12px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${sc};flex-shrink:0"></span>
+              <span style="flex:1;color:var(--text)">${escHtml(t.title)}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3)">${t.assignee?.full_name||'?'}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:${sc}">${t.status.replace('_',' ')}</span>
+              <button data-edit-task="${t.id}" onclick="event.stopPropagation()" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-3);cursor:pointer;font-size:10px">Edit</button>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
     </div>` : ''}
   </div>`;
 }
@@ -1496,6 +1569,19 @@ function renderLeadModal() {
             <input type="text" name="source" value="${escHtml(l.source||'manual')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To</label>
+            <select name="assigned_to" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+              <option value="">Unassigned</option>
+              ${state.team.map(m => `<option value="${m.id}" ${l.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
+            <input type="date" name="due_date" value="${l.due_date||''}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
         <div style="margin-bottom:16px">
           <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
           <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Manrope,sans-serif">${escHtml(l.notes||'')}</textarea>
@@ -1507,6 +1593,120 @@ function renderLeadModal() {
         </div>
       </form>
     </div>
+  </div>`;
+}
+
+// ── Task Modal ───────────────────────────────────────────────────────
+function renderTaskModal() {
+  const ctx = state.taskEntityContext || {};
+  const t = state.taskEditData || {};
+  const isEdit = !!t.id;
+  const today = new Date().toISOString().split('T')[0];
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Task' : 'Assign Task'}</div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <form id="task-form" style="padding:20px 28px 24px">
+        ${ctx.entity_label ? `<div style="padding:8px 12px;background:var(--bg-2);border-radius:8px;font-size:12px;color:var(--text-3);margin-bottom:14px;font-family:'DM Mono',monospace">Linked to: <strong style="color:var(--text)">${escHtml(ctx.entity_label)}</strong></div>` : ''}
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Task Title *</label>
+          <input type="text" name="title" required value="${escHtml(t.title||'')}" placeholder="e.g. Send proposal, Follow up call, Review CV" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To *</label>
+            <select name="assigned_to" required style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+              <option value="">Select person...</option>
+              ${state.team.map(m => `<option value="${m.id}" ${t.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
+            <input type="date" name="due_date" value="${t.due_date||today}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Description (optional)</label>
+          <textarea name="description" rows="3" placeholder="Any additional context..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Manrope,sans-serif;line-height:1.6">${escHtml(t.description||'')}</textarea>
+        </div>
+        ${isEdit ? `
+        <div style="margin-bottom:16px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
+          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:'DM Mono',monospace">
+            <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
+            <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+            <option value="completed" ${t.status==='completed'?'selected':''}>Completed</option>
+          </select>
+        </div>` : ''}
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          ${isEdit ? `<button type="button" id="btn-delete-task" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Delete Task</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save' : 'Assign Task'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Tasks View ───────────────────────────────────────────────────────
+function renderTasksView() {
+  const statusColors = { todo: '#f59e0b', in_progress: '#6366f1', completed: '#10b981' };
+  const statusLabels = { todo: 'To Do', in_progress: 'In Progress', completed: 'Completed' };
+  const filtered = state.taskFilter === 'all' ? state.tasks : state.tasks.filter(t => t.status === state.taskFilter);
+  const myTasks = state.tasks.filter(t => t.assigned_to === currentUser?.id);
+  return `
+  <div class="page-header pipe-header">
+    <div>
+      <div class="page-title">Tasks</div>
+      <div class="page-sub">${state.tasks.length} total · ${myTasks.length} assigned to me</div>
+    </div>
+    <button class="find-leads-btn" id="btn-new-task">+ New Task</button>
+  </div>
+  <div class="metrics-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+    ${['all','todo','in_progress','completed'].map(s => {
+      const count = s === 'all' ? state.tasks.length : state.tasks.filter(t => t.status === s).length;
+      const color = s === 'all' ? 'var(--accent)' : statusColors[s];
+      const label = s === 'all' ? 'All Tasks' : statusLabels[s];
+      return `<div class="metric-card" style="cursor:pointer;${state.taskFilter===s?'border-color:'+color:''}" data-task-filter="${s}">
+        <div class="metric-label">${label}</div>
+        <div class="metric-value" style="color:${color}">${count}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="rec-cands-list">
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No tasks in this category.</div>' : ''}
+    ${filtered.map(t => {
+      const sc = statusColors[t.status] || '#5a5a72';
+      const overdue = t.due_date && t.status !== 'completed' && new Date(t.due_date) < new Date();
+      return `
+      <div class="rec-cand-card" style="cursor:pointer" data-edit-task="${t.id}">
+        <div class="rec-cand-avatar" style="background:linear-gradient(135deg,${sc},${sc}aa)">${(t.assignee?.full_name||'?')[0].toUpperCase()}</div>
+        <div class="rec-cand-body">
+          <div class="rec-cand-top">
+            <div>
+              <div class="rec-cand-name">${escHtml(t.title)}</div>
+              <div class="rec-cand-role">→ ${t.assignee?.full_name||'Unassigned'}${t.entity_label?' · '+t.entity_label:''}</div>
+              ${t.description ? `<div class="rec-cand-summary">${escHtml(t.description)}</div>` : ''}
+              <div style="font-size:10px;color:${overdue?'var(--red)':'var(--text-3)'};font-family:'DM Mono',monospace;margin-top:2px">
+                ${t.due_date ? (overdue?'⚠ Overdue: ':'Due: ')+new Date(t.due_date).toLocaleDateString() : 'No due date'}
+                ${t.completed_at ? ' · Completed '+new Date(t.completed_at).toLocaleDateString() : ''}
+              </div>
+            </div>
+            <div class="rec-cand-actions">
+              <span class="cand-status-pill" style="background:${sc}22;color:${sc};border:1px solid ${sc}44">${statusLabels[t.status]||t.status}</span>
+              <select class="cand-status-select" data-task-status="${t.id}" onclick="event.stopPropagation()">
+                <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
+                <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+                <option value="completed" ${t.status==='completed'?'selected':''}>Completed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
   </div>`;
 }
 
@@ -1764,6 +1964,7 @@ function renderSidebar() {
     {id:'home',           icon:'⌂', label:'Overview', section:'crm'},
     {id:'leads',          icon:'⚡', label:'Leads', section:'crm'},
     {id:'projects',       icon:'▣', label:'Projects', section:'crm'},
+    {id:'tasks',          icon:'✓', label:'Tasks', section:'crm'},
     {id:'team',           icon:'◉', label:'Team', section:'crm'},
     {id:'social-planner', icon:'📋', label:'Social Planner', section:'crm'},
     {id:'articles',       icon:'📝', label:'Articles', section:'crm'},
@@ -2306,9 +2507,15 @@ function renderHome() {
   const totalCandidates = state.jobApplications.length + state.generalCVs.length;
 
   // Social stats
-  const pendingPosts = state.socialPosts.filter(p => p.status === 'pending').length;
+  const pendingPosts = state.socialPosts.filter(p => ['awaiting_review','pending_approval'].includes(p.status)).length;
   const approvedPosts = state.socialPosts.filter(p => p.status === 'approved').length;
   const publishedPosts = state.socialPosts.filter(p => p.status === 'published').length;
+
+  // Task stats
+  const myTasks = state.tasks.filter(t => t.assigned_to === currentUser?.id);
+  const myOpenTasks = myTasks.filter(t => t.status !== 'completed').length;
+  const overdueTasks = state.tasks.filter(t => t.status !== 'completed' && t.due_date && new Date(t.due_date) < now).length;
+  const todoTasks = state.tasks.filter(t => t.status === 'todo').length;
 
   // Recent activity — last 5 leads
   const recentLeads = [...state.leads].sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,5);
@@ -2393,10 +2600,10 @@ function renderHome() {
         <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
         <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">active users</div>
       </div>
-      <div class="home-kpi-card" data-nav="analytics">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Live visitors</div>
-        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:#22c55e;letter-spacing:-1px;line-height:1">${state.liveVisitors.length}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">on website now</div>
+      <div class="home-kpi-card" data-nav="tasks">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
+        <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
       </div>
       <div class="home-kpi-card" data-nav="contact-subs">
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
@@ -2459,14 +2666,31 @@ function renderHome() {
       <!-- Right column: quick actions + status -->
       <div style="display:flex;flex-direction:column;gap:14px">
         <div class="home-card">
+          <div class="home-card-header">
+            <div class="home-card-title">My tasks</div>
+            <button class="home-card-link" data-nav="tasks">View all →</button>
+          </div>
+          ${myTasks.filter(t => t.status !== 'completed').length === 0 ? '<div style="font-size:11px;color:var(--text-3);font-family:DM Mono,monospace;padding:8px 0">No open tasks — great work!</div>' : ''}
+          <div style="display:flex;flex-direction:column;gap:5px">
+            ${myTasks.filter(t => t.status !== 'completed').slice(0,5).map(t => {
+              const overdue = t.due_date && new Date(t.due_date) < now;
+              const sc = t.status==='in_progress'?'#6366f1':'#f59e0b';
+              return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:var(--bg-2);border-left:3px solid ${overdue?'#ef4444':sc}">
+                <span style="flex:1;font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.title)}</span>
+                <span style="font-size:9px;color:${overdue?'#ef4444':'var(--text-3)'};font-family:'DM Mono',monospace;flex-shrink:0">${t.due_date?new Date(t.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="home-card">
           <div class="home-card-header"><div class="home-card-title">Quick actions</div></div>
           <div style="display:flex;flex-direction:column;gap:6px">
             ${[
               {icon:'⚡',label:'Add new lead',nav:'leads'},
-              {icon:'▣',label:'View projects',nav:'projects'},
+              {icon:'✓', label:'Assign a task',nav:'tasks'},
               {icon:'📄',label:'Upload a CV',nav:'general-cvs'},
               {icon:'📋',label:'Social planner',nav:'social-planner'},
-              {icon:'📊',label:'Analytics',nav:'analytics'},
+              {icon:'📝',label:'Write article (AI)',nav:'articles'},
               {icon:'🤖',label:'Ask Jarvis',nav:'agents'},
             ].map(a=>`
             <div data-nav="${a.nav}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-1);cursor:pointer;transition:border-color 0.15s">
@@ -2571,6 +2795,7 @@ function renderView() {
   if (state.view==='job-apps')        return renderJobApplications();
   if (state.view==='ai-assessments')  return renderAIAssessments();
   if (state.view==='files')           return renderFilesView();
+  if (state.view==='tasks')        return renderTasksView();
   if (state.view==='pipeline')   return renderPipeline();
   if (state.view==='recruiting') return renderRecruiting();
   if (state.view==='social')     return renderSocial();
@@ -2819,6 +3044,12 @@ function render() {
     document.body.appendChild(el.firstElementChild);
     attachSocialPostModalEvents();
   }
+  if (state.taskModal) {
+    const el = document.createElement('div');
+    el.innerHTML = renderTaskModal();
+    document.body.appendChild(el.firstElementChild);
+    attachTaskModalEvents();
+  }
   if (state.showApiKeyModal) {
     const el = document.createElement('div');
     el.innerHTML = renderApiKeyModal();
@@ -2851,10 +3082,9 @@ function attachEvents() {
       if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
       state.activeProject = null;
       state.view=el.dataset.nav; state.expandedId=null; state.modal=null;
-      if (el.dataset.nav === 'leads' && state.leads.length === 0) {
-        state.leadsLoading = true; render();
-        state.leads = await fetchLeads();
-        state.leadsLoading = false;
+      if (el.dataset.nav === 'leads') {
+        if (state.leads.length === 0) { state.leadsLoading = true; render(); state.leads = await fetchLeads(); state.leadsLoading = false; }
+        if (state.team.length === 0) state.team = await fetchTeam();
       }
       if (el.dataset.nav === 'projects' && state.projects.length === 0) {
         state.projectsLoading = true; render();
@@ -2891,9 +3121,10 @@ function attachEvents() {
         const g = buildGraph({ leads: state.leads, projects: state.projects, team: state.team, positions, candidates });
         state.mapNodes = g.nodes; state.mapEdges = g.edges;
       }
-      if (el.dataset.nav === 'contact-subs') state.contactSubmissions = await fetchContactSubmissions();
-      if (el.dataset.nav === 'general-cvs') state.generalCVs = await fetchGeneralCVs();
-      if (el.dataset.nav === 'job-apps') state.jobApplications = await fetchJobApplications();
+      if (el.dataset.nav === 'tasks') state.tasks = await fetchTasks();
+      if (el.dataset.nav === 'contact-subs') { state.contactSubmissions = await fetchContactSubmissions(); state.tasks = await fetchTasks(); }
+      if (el.dataset.nav === 'general-cvs') { state.generalCVs = await fetchGeneralCVs(); state.tasks = await fetchTasks(); }
+      if (el.dataset.nav === 'job-apps') { state.jobApplications = await fetchJobApplications(); state.tasks = await fetchTasks(); }
       if (el.dataset.nav === 'ai-assessments') state.aiAssessments = await fetchAIAssessments();
       if (el.dataset.nav === 'files') {
         state.generalCVs = await fetchGeneralCVs();
@@ -3048,6 +3279,7 @@ function attachEvents() {
   attachAgentEvents();
   attachMapEvents();
   attachSubmissionEvents();
+  attachTaskEvents();
 
   // Theme toggle
   document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
@@ -3300,7 +3532,7 @@ function attachLeadModalEvents() {
   document.getElementById('lead-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const data = { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), phone: fd.get('phone'), value: parseFloat(fd.get('value'))||0, source: fd.get('source'), notes: fd.get('notes') };
+    const data = { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), phone: fd.get('phone'), value: parseFloat(fd.get('value'))||0, source: fd.get('source'), notes: fd.get('notes'), assigned_to: fd.get('assigned_to')||null, due_date: fd.get('due_date')||null };
     if (state.leadEditData?.id) {
       await updateLead(state.leadEditData.id, data);
       showToast('Lead updated', 'success');
@@ -3593,6 +3825,52 @@ function attachArticleModalEvents() {
     showToast('Article deleted', 'success');
     closeModal();
   });
+
+  // AI Write button
+  document.getElementById('btn-ai-write')?.addEventListener('click', () => {
+    const panel = document.getElementById('ai-write-panel');
+    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    // Pre-fill topic from title if empty
+    const topicInput = document.getElementById('ai-topic');
+    const titleInput = document.querySelector('#article-form [name="title"]');
+    if (topicInput && titleInput && !topicInput.value && titleInput.value) {
+      topicInput.value = titleInput.value;
+    }
+  });
+  document.getElementById('btn-ai-generate')?.addEventListener('click', async () => {
+    const topic = document.getElementById('ai-topic')?.value?.trim();
+    if (!topic) { showToast('Enter a topic first', 'error'); return; }
+    const tone = document.getElementById('ai-tone')?.value || 'professional';
+    const length = document.getElementById('ai-length')?.value || 'medium';
+    const statusEl = document.getElementById('ai-write-status');
+    const btn = document.getElementById('btn-ai-generate');
+    if (statusEl) statusEl.textContent = '✨ Writing article with Claude... (takes ~20 seconds)';
+    if (btn) { btn.disabled = true; btn.textContent = 'Writing...'; }
+    try {
+      const res = await fetch('/api/claude-write', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, tone, length }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI write failed');
+      const bodyEl = document.getElementById('article-body');
+      if (bodyEl) bodyEl.value = data.text;
+      // Auto-fill title if empty
+      const titleEl = document.querySelector('#article-form [name="title"]');
+      if (titleEl && !titleEl.value) {
+        const firstLine = data.text.split('\n')[0].replace(/^#+\s*/, '');
+        titleEl.value = firstLine;
+      }
+      if (statusEl) statusEl.textContent = '✓ Article generated — review and edit before saving.';
+      showToast('Article written by Claude ✓', 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '✗ Error: ' + err.message;
+      showToast('AI write error: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
+    }
+  });
+
   document.getElementById('article-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -3637,6 +3915,53 @@ function attachSocialPlannerEvents() {
       render();
     });
   });
+  // July Plan
+  document.getElementById('btn-july-plan')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    e.target.textContent = 'Loading...';
+    try {
+      await batchCreateJulyPlan(currentUser.id);
+      state.socialPosts = await fetchSocialPosts();
+      showToast('July 2026 plan loaded — 20 posts ready ✓', 'success');
+      render();
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+      e.target.disabled = false;
+      e.target.textContent = '📅 Load July Plan';
+    }
+  });
+
+  // Delete post
+  document.querySelectorAll('[data-delete-social-post]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete this post?')) return;
+      await deleteSocialPost(btn.dataset.deleteSocialPost);
+      state.socialPosts = await fetchSocialPosts();
+      showToast('Post deleted', 'success');
+      render();
+    });
+  });
+
+  // Status change dropdown
+  document.querySelectorAll('[data-sp-status]').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      await updatePostStatus(sel.dataset.spStatus, sel.value);
+      state.socialPosts = await fetchSocialPosts();
+      showToast('Status updated', 'success');
+      render();
+    });
+  });
+
+  // Instagram / Facebook placeholders
+  document.getElementById('btn-connect-instagram')?.addEventListener('click', () => {
+    showToast('Instagram connection requires a Meta Developer App. Contact support to configure.', 'info');
+  });
+  document.getElementById('btn-connect-facebook')?.addEventListener('click', () => {
+    showToast('Facebook connection requires a Meta Developer App. Contact support to configure.', 'info');
+  });
+
   document.getElementById('btn-connect-linkedin')?.addEventListener('click', () => {
     const clientId = '77se4a33m0uhm5';
     const redirectUri = `${location.origin}/api/linkedin-oauth-callback`;
@@ -3687,10 +4012,104 @@ function attachSocialPostModalEvents() {
       content: fd.get('content'),
       platforms,
       scheduled_date: fd.get('scheduled_date') || null,
+      status: fd.get('status') || 'brief',
     }, approverIds);
     state.socialPosts = await fetchSocialPosts();
     showToast(approverIds.length ? 'Post submitted for approval' : 'Post created!', 'success');
     closeModal();
+  });
+}
+
+// ── Task Modal Events ─────────────────────────────────────────────────
+function attachTaskModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const closeModal = () => { state.taskModal = null; state.taskEditData = null; state.taskEntityContext = null; overlay.remove(); render(); };
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.getElementById('btn-delete-task')?.addEventListener('click', async () => {
+    if (!confirm('Delete this task?')) return;
+    await deleteTask(state.taskEditData.id);
+    state.tasks = await fetchTasks();
+    showToast('Task deleted', 'success');
+    closeModal();
+  });
+  document.getElementById('task-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const ctx = state.taskEntityContext || {};
+    try {
+      if (state.taskEditData?.id) {
+        await updateTask(state.taskEditData.id, {
+          title: fd.get('title'), description: fd.get('description'),
+          assigned_to: fd.get('assigned_to') || null, due_date: fd.get('due_date') || null,
+          status: fd.get('status') || state.taskEditData.status,
+        });
+        showToast('Task updated', 'success');
+      } else {
+        await createTask({
+          title: fd.get('title'), description: fd.get('description'),
+          assigned_to: fd.get('assigned_to') || null, due_date: fd.get('due_date') || null,
+          entity_type: ctx.entity_type || null, entity_id: ctx.entity_id || null,
+          entity_label: ctx.entity_label || null,
+        });
+        showToast('Task assigned — notification sent ✓', 'success');
+      }
+      state.tasks = await fetchTasks();
+      closeModal();
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+  });
+}
+
+// ── Task Events ──────────────────────────────────────────────────────
+function attachTaskEvents() {
+  // Open task modal from Tasks view
+  document.getElementById('btn-new-task')?.addEventListener('click', () => {
+    state.taskModal = 'new'; state.taskEditData = null; state.taskEntityContext = null; render();
+  });
+
+  // Task filter chips
+  document.querySelectorAll('[data-task-filter]').forEach(el => {
+    el.addEventListener('click', () => { state.taskFilter = el.dataset.taskFilter; render(); });
+  });
+
+  // Click to edit task
+  document.querySelectorAll('[data-edit-task]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const task = state.tasks.find(t => t.id === el.dataset.editTask);
+      if (!task) return;
+      if (state.team.length === 0) state.team = await fetchTeam();
+      state.taskModal = 'edit'; state.taskEditData = task; state.taskEntityContext = null; render();
+    });
+  });
+
+  // Assign task from submission card
+  document.querySelectorAll('[data-assign-task]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (state.team.length === 0) state.team = await fetchTeam();
+      state.taskModal = 'new';
+      state.taskEditData = null;
+      state.taskEntityContext = {
+        entity_type: btn.dataset.taskEntityType,
+        entity_id: btn.dataset.assignTask,
+        entity_label: btn.dataset.taskEntityLabel,
+      };
+      render();
+    });
+  });
+
+  // Status change from task list
+  document.querySelectorAll('[data-task-status]').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      await updateTask(sel.dataset.taskStatus, { status: sel.value });
+      state.tasks = await fetchTasks();
+      showToast('Task status updated', 'success');
+      render();
+    });
   });
 }
 
@@ -4109,7 +4528,7 @@ async function boot() {
     state.leadsLoading = true;
     render();
     // Load all data needed for home overview in parallel
-    const [leads, projects, team, socialPosts, contactSubs, generalCVs, jobApps, unread] = await Promise.all([
+    const [leads, projects, team, socialPosts, contactSubs, generalCVs, jobApps, unread, tasks] = await Promise.all([
       fetchLeads(),
       fetchProjects(),
       fetchTeam(),
@@ -4118,6 +4537,7 @@ async function boot() {
       fetchGeneralCVs(),
       fetchJobApplications(),
       getUnreadCount(),
+      fetchTasks(),
     ]);
     state.leads = leads;
     state.projects = projects;
@@ -4128,6 +4548,7 @@ async function boot() {
     state.jobApplications = jobApps;
     state.leadsLoading = false;
     state.unreadCount = unread;
+    state.tasks = tasks;
     state.notifUnsub = subscribeToNotifications((notif) => {
       state.unreadCount++;
       showToast(notif.title, 'info');

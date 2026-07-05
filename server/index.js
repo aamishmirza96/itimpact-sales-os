@@ -172,6 +172,51 @@ app.post('/api/linkedin-post', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Claude AI Writer ──────────────────────────────────────────────────
+app.post('/api/claude-write', async (req, res) => {
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_KEY) return res.status(400).json({ error: 'ANTHROPIC_API_KEY not configured in environment variables.' });
+  try {
+    const { topic, tone = 'professional', length = 'medium' } = req.body;
+    if (!topic) return res.status(400).json({ error: 'Topic is required' });
+    const wordCount = length === 'short' ? '400-600' : length === 'long' ? '1200-1800' : '700-1000';
+    const prompt = `You are a content writer for IT Impact Consulting, a premium IT consulting firm specialising in AI transformation, digital transformation, and IT strategy for private equity, healthcare, and dental sectors.
+
+Write a ${tone} article about: "${topic}"
+
+Requirements:
+- Length: ${wordCount} words
+- Format in Markdown with a clear H1 title, introduction, 3-4 H2 sections with content, and a strong conclusion
+- Tone: ${tone} and authoritative — position IT Impact as a thought leader
+- Include specific, actionable insights
+- Reference AI, digital transformation, or IT strategy where relevant
+- End with a subtle call to action mentioning IT Impact Consulting
+
+Write the full article now:`;
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      return res.status(r.status).json({ error: `Claude API error: ${err}` });
+    }
+    const d = await r.json();
+    const text = d.content?.[0]?.text || '';
+    res.json({ text });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Invite team member ────────────────────────────────────────────────
 app.post('/api/invite-team-member', async (req, res) => {
   try {
