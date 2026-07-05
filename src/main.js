@@ -873,7 +873,7 @@ function renderAnalyticsView() {
   <div class="metrics-row" style="grid-template-columns:repeat(5,1fr)">
     <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-value">${d.sessions}</div><div class="metric-sub">unique visitors</div></div>
     <div class="metric-card"><div class="metric-label">Page Views</div><div class="metric-value accent">${d.pageViews}</div><div class="metric-sub">${avgPages} pages/session</div></div>
-    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value green">${d.clicks}</div><div class="metric-sub">tracked interactions</div></div>
+    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value green">${d.clicks ?? 0}</div><div class="metric-sub">tracked interactions</div></div>
     <div class="metric-card"><div class="metric-label">Avg Time</div><div class="metric-value">${d.avgTime >= 60 ? Math.floor(d.avgTime/60)+'m '+d.avgTime%60+'s' : d.avgTime+'s'}</div><div class="metric-sub">per session</div></div>
     <div class="metric-card"><div class="metric-label">Devices</div><div class="metric-value">${devices.desktop||0}<span style="font-size:14px;color:var(--text-3)"> / </span>${devices.mobile||0}</div><div class="metric-sub">desktop / mobile</div></div>
   </div>
