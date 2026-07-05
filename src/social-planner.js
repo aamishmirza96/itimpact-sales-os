@@ -43,9 +43,16 @@ export async function fetchSocialPosts() {
   return data || [];
 }
 
+// Map new UI stage names to DB-valid values (before migration is run)
+function toDbStatus(uiStatus) {
+  const map = { brief: 'draft', in_production: 'draft', awaiting_review: 'pending_approval' };
+  return map[uiStatus] || uiStatus;
+}
+
 export async function createSocialPost(post, approverIds) {
   if (!supabase) return null;
-  const status = approverIds?.length ? 'awaiting_review' : (post.status || 'brief');
+  const rawStatus = approverIds?.length ? 'pending_approval' : toDbStatus(post.status || 'draft');
+  const status = rawStatus;
   const { data, error } = await supabase.from('social_posts').insert({
     content: post.content,
     platforms: post.platforms || [],
@@ -106,8 +113,9 @@ export async function approvePost(approvalId, postId, approved, comment) {
 
 export async function updatePostStatus(id, status) {
   if (!supabase) return;
-  const updates = { status, updated_at: new Date().toISOString() };
-  if (status === 'published') updates.posted_at = new Date().toISOString();
+  const dbStatus = toDbStatus(status);
+  const updates = { status: dbStatus, updated_at: new Date().toISOString() };
+  if (dbStatus === 'published') updates.posted_at = new Date().toISOString();
   await supabase.from('social_posts').update(updates).eq('id', id);
 }
 

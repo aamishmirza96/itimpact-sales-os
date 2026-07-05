@@ -3532,7 +3532,7 @@ function attachLeadModalEvents() {
   document.getElementById('lead-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const data = { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), phone: fd.get('phone'), value: parseFloat(fd.get('value'))||0, source: fd.get('source'), notes: fd.get('notes'), assigned_to: fd.get('assigned_to')||null, due_date: fd.get('due_date')||null };
+    const data = { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), phone: fd.get('phone'), value: parseFloat(fd.get('value'))||0, source: fd.get('source'), notes: fd.get('notes'), assigned_to: fd.get('assigned_to')||null };
     if (state.leadEditData?.id) {
       await updateLead(state.leadEditData.id, data);
       showToast('Lead updated', 'success');
