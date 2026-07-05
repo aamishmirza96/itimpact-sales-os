@@ -3545,7 +3545,7 @@ function attachTeamModalEvents() {
         if (!email) { showToast('Email is required to add a member', 'error'); return; }
         const submitBtn = document.querySelector('#member-form button[type="submit"]');
         if (submitBtn) { submitBtn.textContent = 'Adding…'; submitBtn.disabled = true; }
-        const res = await fetch('/.netlify/functions/invite-team-member', {
+        const res = await fetch('/api/invite-team-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, ...updates }),
@@ -3639,7 +3639,7 @@ function attachSocialPlannerEvents() {
   });
   document.getElementById('btn-connect-linkedin')?.addEventListener('click', () => {
     const clientId = '77se4a33m0uhm5';
-    const redirectUri = `${location.origin}/.netlify/functions/linkedin-oauth-callback`;
+    const redirectUri = `${location.origin}/api/linkedin-oauth-callback`;
     const scope = encodeURIComponent('openid profile w_member_social');
     const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
     location.href = authUrl;
@@ -3652,7 +3652,7 @@ function attachSocialPlannerEvents() {
       btn.textContent = 'Publishing...';
       btn.disabled = true;
       try {
-        const res = await fetch('/.netlify/functions/linkedin-post', {
+        const res = await fetch('/api/linkedin-post', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: post.content }),
         });
@@ -3706,7 +3706,7 @@ function attachAnalyticsEvents() {
   });
   document.getElementById('btn-connect-google')?.addEventListener('click', () => {
     const clientId = '557532595072-k4218aj9elu93lmoehoao1qv2shvrq9q.apps.googleusercontent.com';
-    const redirectUri = `${location.origin}/.netlify/functions/google-oauth-callback`;
+    const redirectUri = `${location.origin}/api/google-oauth-callback`;
     const scope = encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     location.href = authUrl;
@@ -3886,7 +3886,7 @@ async function fetchGAData(customFrom, customTo) {
   try {
     let start = `${state.analyticsDays}daysAgo`, end = 'today';
     if (customFrom && customTo) { start = customFrom; end = customTo; }
-    const res = await fetch(`/.netlify/functions/ga-data?start=${start}&end=${end}`);
+    const res = await fetch(`/api/ga-data?start=${start}&end=${end}`);
     const data = await res.json();
     state.gaData = data;
   } catch (err) {
