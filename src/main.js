@@ -1759,6 +1759,7 @@ function sourceBadge(src) {
 // ── Sidebar ───────────────────────────────────────────────────────────
 function renderSidebar() {
   const navItems = [
+    {id:'home',           icon:'⌂', label:'Overview', section:'crm'},
     {id:'leads',          icon:'⚡', label:'Leads', section:'crm'},
     {id:'projects',       icon:'▣', label:'Projects', section:'crm'},
     {id:'team',           icon:'◉', label:'Team', section:'crm'},
@@ -2275,6 +2276,242 @@ function renderDisqualify() {
   </div>`;
 }
 
+// ── Home / Overview ───────────────────────────────────────────────────
+function renderHome() {
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+  const name = currentProfile?.full_name?.split(' ')[0] || 'there';
+  const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  // Lead stats
+  const totalLeads = state.leads.length;
+  const newLeads = state.leads.filter(l => l.status === 'new').length;
+  const qualifiedLeads = state.leads.filter(l => l.status === 'qualified').length;
+  const proposalLeads = state.leads.filter(l => l.status === 'proposal').length;
+  const wonLeads = state.leads.filter(l => l.status === 'won').length;
+  const totalValue = state.leads.reduce((s,l) => s + (l.value || 0), 0);
+  const wonValue = state.leads.filter(l=>l.status==='won').reduce((s,l)=>s+(l.value||0),0);
+
+  // Project stats
+  const activeProjects = state.projects.filter(p => p.status !== 'completed').length;
+  const completedProjects = state.projects.filter(p => p.status === 'completed').length;
+
+  // Hiring stats
+  const newJobApps = state.jobApplications.filter(j => j.status === 'new').length;
+  const newCVs = state.generalCVs.filter(c => c.status === 'new').length;
+  const totalCandidates = state.jobApplications.length + state.generalCVs.length;
+
+  // Social stats
+  const pendingPosts = state.socialPosts.filter(p => p.status === 'pending').length;
+  const approvedPosts = state.socialPosts.filter(p => p.status === 'approved').length;
+  const publishedPosts = state.socialPosts.filter(p => p.status === 'published').length;
+
+  // Recent activity — last 5 leads
+  const recentLeads = [...state.leads].sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,5);
+  // Recent job apps
+  const recentApps = [...state.jobApplications].sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,3);
+  const recentCVs = [...state.generalCVs].sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,3);
+
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff/60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m/60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h/24)}d ago`;
+  };
+
+  return `
+  <div style="max-width:1100px">
+    <!-- Header -->
+    <div style="margin-bottom:32px">
+      <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name} 👋</div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-3);margin-top:4px">${dateStr} · Here's what's happening at IT Impact</div>
+    </div>
+
+    <!-- KPI Row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
+      ${kpiCard('Total Leads', totalLeads, `${newLeads} new · ${qualifiedLeads} qualified`, '⚡', 'var(--accent)', 'leads')}
+      ${kpiCard('Pipeline Value', '$'+totalValue.toLocaleString(), `$${wonValue.toLocaleString()} won`, '💰', '#10b981', 'leads')}
+      ${kpiCard('Active Projects', activeProjects, `${completedProjects} completed`, '▣', '#f59e0b', 'projects')}
+      ${kpiCard('New Applications', newJobApps + newCVs, `${totalCandidates} total candidates`, '💼', '#8b5cf6', 'job-apps')}
+    </div>
+
+    <!-- Second row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px">
+      ${kpiCard('Social Posts', publishedPosts, `${pendingPosts} pending · ${approvedPosts} approved`, '📋', '#06b6d4', 'social-planner')}
+      ${kpiCard('Team Members', state.team.length, 'active users', '◉', '#ec4899', 'team')}
+      ${kpiCard('Live Visitors', state.liveVisitors.length, 'on website right now', '🌐', '#22c55e', 'analytics')}
+      ${kpiCard('Contact Submissions', state.contactSubmissions.filter(c=>c.status==='new').length, `${state.contactSubmissions.length} total`, '✉️', '#f97316', 'contact-subs')}
+    </div>
+
+    <!-- Main grid: recent activity + quick actions -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px">
+
+      <!-- Left: Recent leads + pipeline snapshot -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Lead pipeline snapshot -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div class="home-card-title">Lead Pipeline</div>
+            <button class="home-card-link" data-nav="leads">View all →</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            ${[
+              {label:'New',id:'new',color:'#64748b'},
+              {label:'Qualified',id:'qualified',color:'var(--accent)'},
+              {label:'Proposal',id:'proposal',color:'#f59e0b'},
+              {label:'Negotiation',id:'negotiation',color:'#f97316'},
+              {label:'Won',id:'won',color:'#10b981'},
+            ].map(s => {
+              const count = state.leads.filter(l=>l.status===s.id).length;
+              const pct = totalLeads ? Math.round(count/totalLeads*100) : 0;
+              return `<div style="flex:1;min-width:80px;background:var(--bg-2);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border-subtle)">
+                <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:22px;color:${s.color}">${count}</div>
+                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-3);margin-top:2px">${s.label}</div>
+                <div style="font-size:10px;color:var(--text-3)">${pct}%</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${recentLeads.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">No leads yet</div>' : ''}
+          ${recentLeads.map(l => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
+              <div style="width:36px;height:36px;border-radius:10px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">
+                ${(l.company||l.name||'?')[0].toUpperCase()}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.company || l.name || '—'}</div>
+                <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${l.contact_name||''} ${l.contact_name&&l.title?' · ':''} ${l.title||''}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:12px;font-weight:700;color:var(--text)">${l.value?'$'+Number(l.value).toLocaleString():'—'}</div>
+                <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace">${timeAgo(l.created_at)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Recent candidates -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div class="home-card-title">Recent Candidates</div>
+            <button class="home-card-link" data-nav="job-apps">View all →</button>
+          </div>
+          ${[...recentApps.map(a=>({...a,_type:'Job App'})), ...recentCVs.map(c=>({...c,_type:'General CV'}))].length === 0
+            ? '<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">No applications yet</div>'
+            : [...recentApps.map(a=>({...a,_type:'Job App'})), ...recentCVs.map(c=>({...c,_type:'General CV'}))].map(a => `
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
+                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:Manrope,sans-serif;flex-shrink:0">
+                  ${(a.name||'?')[0].toUpperCase()}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700;font-size:13px;color:var(--text)">${a.name||'—'}</div>
+                  <div style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace">${a.position_title||a.current_title||'—'}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${a._type==='Job App'?'rgba(6,182,212,0.12)':'rgba(139,92,246,0.12)'};color:${a._type==='Job App'?'#06b6d4':'#8b5cf6'};font-family:'DM Mono',monospace">${a._type}</span>
+                  <div style="font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;margin-top:2px">${timeAgo(a.created_at)}</div>
+                </div>
+              </div>
+            `).join('')}
+        </div>
+      </div>
+
+      <!-- Right: Quick actions + status -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Quick actions -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div class="home-card-title">Quick Actions</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${quickAction('⚡', 'Add New Lead', 'leads', '#4f46e5')}
+            ${quickAction('▣', 'View Projects', 'projects', '#f59e0b')}
+            ${quickAction('📄', 'Upload a CV', 'general-cvs', '#8b5cf6')}
+            ${quickAction('📋', 'Create Social Post', 'social-planner', '#06b6d4')}
+            ${quickAction('📊', 'Analytics & Traffic', 'analytics', '#10b981')}
+            ${quickAction('🤖', 'Ask Jarvis AI', 'agents', '#ec4899')}
+          </div>
+        </div>
+
+        <!-- System status -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div class="home-card-title">System Status</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${statusRow('Supabase Database', true)}
+            ${statusRow('Google Analytics', state.googleConnected)}
+            ${statusRow('LinkedIn Account', state.linkedinConnected)}
+            ${statusRow('Website Tracker', state.liveVisitors !== null)}
+            ${statusRow('AI Agents', !!localStorage.getItem('openai_key') || !!localStorage.getItem('anthropic_key'))}
+          </div>
+        </div>
+
+        <!-- Social posts pending -->
+        ${pendingPosts > 0 ? `
+        <div class="home-card" style="border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.04)">
+          <div class="home-card-header">
+            <div class="home-card-title" style="color:#f59e0b">⚠ Pending Approval</div>
+            <button class="home-card-link" data-nav="social-planner">Review →</button>
+          </div>
+          <div style="font-size:13px;color:var(--text-2)">${pendingPosts} social post${pendingPosts>1?'s':''} waiting for your approval before publishing.</div>
+        </div>` : ''}
+
+        <!-- New contact submissions alert -->
+        ${state.contactSubmissions.filter(c=>c.status==='new').length > 0 ? `
+        <div class="home-card" style="border:1px solid rgba(249,115,22,0.3);background:rgba(249,115,22,0.04)">
+          <div class="home-card-header">
+            <div class="home-card-title" style="color:#f97316">📬 New Enquiries</div>
+            <button class="home-card-link" data-nav="contact-subs">View →</button>
+          </div>
+          <div style="font-size:13px;color:var(--text-2)">${state.contactSubmissions.filter(c=>c.status==='new').length} new contact form submission${state.contactSubmissions.filter(c=>c.status==='new').length>1?'s':''} need attention.</div>
+        </div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function kpiCard(label, value, sub, icon, color, nav) {
+  return `
+  <div class="home-kpi-card" data-nav="${nav}" style="cursor:pointer">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:22px">${icon}</div>
+      <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-3);background:var(--bg-2);padding:3px 8px;border-radius:20px">→</div>
+    </div>
+    <div style="font-family:Manrope,sans-serif;font-weight:800;font-size:28px;color:${color};letter-spacing:-1px">${value}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-top:4px">${label}</div>
+    <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text-3);margin-top:2px">${sub}</div>
+  </div>`;
+}
+
+function quickAction(icon, label, nav, color) {
+  return `
+  <div data-nav="${nav}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border-subtle);cursor:pointer;transition:all 0.15s"
+    onmouseover="this.style.borderColor='${color}';this.style.background='var(--bg-3)'"
+    onmouseout="this.style.borderColor='var(--border-subtle)';this.style.background='var(--bg-2)'">
+    <span style="font-size:16px">${icon}</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text)">${label}</span>
+    <span style="margin-left:auto;color:var(--text-3);font-size:14px">→</span>
+  </div>`;
+}
+
+function statusRow(label, ok) {
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:13px;color:var(--text-2)">${label}</span>
+    <span style="font-size:11px;font-family:'DM Mono',monospace;padding:2px 10px;border-radius:20px;${ok
+      ? 'background:rgba(16,185,129,0.12);color:#10b981'
+      : 'background:rgba(248,113,113,0.12);color:var(--red)'}">
+      ${ok ? '● Connected' : '○ Not set up'}
+    </span>
+  </div>`;
+}
+
 // ── Outreach View ─────────────────────────────────────────────────────
 function renderOutreach() {
   const seqs = [outreachSequences.neilBansal, outreachSequences.jamesDale];
@@ -2331,6 +2568,7 @@ function renderModal() {
 
 // ── Render ────────────────────────────────────────────────────────────
 function renderView() {
+  if (state.view==='home')            return renderHome();
   if (state.view==='leads')           return renderLeads();
   if (state.view==='projects')        return renderProjects();
   if (state.view==='team')            return renderTeam();
@@ -3813,7 +4051,7 @@ async function boot() {
       const wasAuth = state.authenticated;
       state.authenticated = !!currentUser;
       if (state.authenticated && !wasAuth) {
-        state.view = 'leads';
+        state.view = 'home';
       }
       if (wasAuth !== state.authenticated) render();
     });
@@ -3867,12 +4105,29 @@ async function boot() {
   }
 
   if (state.authenticated) {
-    state.view = 'leads';
+    state.view = 'home';
     state.leadsLoading = true;
     render();
-    state.leads = await fetchLeads();
+    // Load all data needed for home overview in parallel
+    const [leads, projects, team, socialPosts, contactSubs, generalCVs, jobApps, unread] = await Promise.all([
+      fetchLeads(),
+      fetchProjects(),
+      fetchTeam(),
+      fetchSocialPosts(),
+      fetchContactSubmissions(),
+      fetchGeneralCVs(),
+      fetchJobApplications(),
+      getUnreadCount(),
+    ]);
+    state.leads = leads;
+    state.projects = projects;
+    state.team = team;
+    state.socialPosts = socialPosts;
+    state.contactSubmissions = contactSubs;
+    state.generalCVs = generalCVs;
+    state.jobApplications = jobApps;
     state.leadsLoading = false;
-    state.unreadCount = await getUnreadCount();
+    state.unreadCount = unread;
     state.notifUnsub = subscribeToNotifications((notif) => {
       state.unreadCount++;
       showToast(notif.title, 'info');

@@ -78,6 +78,15 @@ body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif; fo
 /* ── Page header ── */
 .page-header { margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-header-left { flex: 1; }
+
+/* Home / Overview */
+.home-kpi-card { background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 20px; transition: all 0.15s; }
+.home-kpi-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+.home-card { background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 20px; }
+.home-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.home-card-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 15px; color: var(--text); }
+.home-card-link { background: none; border: none; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; padding: 0; }
+.home-card-link:hover { text-decoration: underline; }
 .pipe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .page-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 30px; letter-spacing: -0.5px; color: var(--text); }
 .page-sub { font-size: 13px; color: var(--text-3); margin-top: 5px; font-family: 'DM Mono', monospace; }
