@@ -485,8 +485,10 @@ function renderAddMemberModal() {
       </div>
       <form id="member-form" style="padding:20px 28px 24px">
         ${!isEdit ? `
-        <div style="padding:12px 14px;background:var(--amber-glow);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace;margin-bottom:16px;line-height:1.6">
-          ⚠ New members must sign up at the login page first. This form updates their profile details (designation, department, etc). Enter the email they signed up with.
+        <div style="margin-bottom:14px">
+          <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email Address *</label>
+          <input type="email" name="email" required placeholder="team@itimpact.com" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-3);margin-top:5px">They'll receive an invite email to set their password.</div>
         </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
@@ -532,7 +534,7 @@ function renderAddMemberModal() {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:'DM Mono',monospace;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Update Member'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Add Member'}</button>
         </div>
       </form>
     </div>
@@ -3552,7 +3554,18 @@ function attachTeamModalEvents() {
         await updateProfile(state.editMemberData.id, updates);
         showToast('Member updated ✓', 'success');
       } else {
-        showToast('Tell the new member to sign up first, then edit their profile here', 'info');
+        const email = fd.get('email')?.trim();
+        if (!email) { showToast('Email is required to add a member', 'error'); return; }
+        const submitBtn = document.querySelector('#member-form button[type="submit"]');
+        if (submitBtn) { submitBtn.textContent = 'Adding…'; submitBtn.disabled = true; }
+        const res = await fetch('/.netlify/functions/invite-team-member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, ...updates }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to add member');
+        showToast(result.existing ? 'Profile updated for existing user ✓' : 'Member added — invite email sent ✓', 'success');
       }
       state.team = await fetchTeam();
       closeModal();
