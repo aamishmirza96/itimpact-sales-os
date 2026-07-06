@@ -28,29 +28,29 @@ function submissionCard(s, opts) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <span class="cand-status-pill" style="background:${st.color}1a;color:${st.color};border:1px solid ${st.color}33">${st.label}</span>
-        <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${new Date(s.created_at).toLocaleDateString()} ${new Date(s.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="font-size:10px;color:var(--text-3)">${new Date(s.created_at).toLocaleDateString()} ${new Date(s.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
     </div>
     ${isExpanded ? `
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
       ${opts.renderDetail ? opts.renderDetail(s) : ''}
       <div style="display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap">
-        <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase">Status:</span>
+        <span style="font-size:10px;color:var(--text-3);text-transform:uppercase">Status:</span>
         <select class="cand-status-select" data-submission-status="${idPrefix}${s.id}" data-submission-table="${opts.table}">
           ${statusOptions.map(o=>`<option value="${o.id}" ${s[statusField]===o.id?'selected':''}>${o.label}</option>`).join('')}
         </select>
-        <button data-assign-task="${s.id}" data-task-entity-type="${opts.table}" data-task-entity-label="${escHtml(s.full_name)}" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:10px">+ Assign Follow-up</button>
+        <button data-assign-task="${s.id}" data-task-entity-type="${opts.table}" data-task-entity-label="${escHtml(s.full_name)}" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-size:10px">+ Assign Follow-up</button>
       </div>
       ${(state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id))).length ? `
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
-          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Tasks</span>
+          <span style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Tasks</span>
           ${state.tasks.filter(t => t.entity_type === opts.table && t.entity_id === String(s.id)).map(t => {
             const sc = t.status==='completed'?'#10b981':t.status==='in_progress'?'#6366f1':'#f59e0b';
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-2);border-radius:6px;font-size:12px">
               <span style="width:8px;height:8px;border-radius:50%;background:${sc};flex-shrink:0"></span>
               <span style="flex:1;color:var(--text)">${escHtml(t.title)}</span>
-              <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${t.assignee?.full_name||'?'}</span>
-              <span style="font-family:Arial,sans-serif;font-size:10px;color:${sc}">${t.status.replace('_',' ')}</span>
+              <span style="font-size:10px;color:var(--text-3)">${t.assignee?.full_name||'?'}</span>
+              <span style="font-size:10px;color:${sc}">${t.status.replace('_',' ')}</span>
               <button data-edit-task="${t.id}" onclick="event.stopPropagation()" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-3);cursor:pointer;font-size:10px">Edit</button>
             </div>`;
           }).join('')}

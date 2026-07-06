@@ -21,9 +21,9 @@ function renderTeam() {
     <div style="display:flex;gap:8px;align-items:center">
       ${ceoUnlocked ? `
         <button class="find-leads-btn" id="btn-add-member">+ Add Member</button>
-        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-family:Arial,sans-serif;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
+        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
       ` : `
-        <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-family:Arial,sans-serif;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
+        <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
       `}
     </div>
   </div>
@@ -38,23 +38,23 @@ function renderTeam() {
             <button class="team-delete-btn" data-delete-member="${m.id}" data-member-name="${escHtml(m.full_name||m.email)}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,0.2);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Remove">✕</button>
           </div>` : ''}
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0;position:relative">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;position:relative">
             ${(m.full_name||m.email||'?')[0].toUpperCase()}
             <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card-flat)"></div>
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:15px;font-weight:600;color:var(--text)">${m.full_name||'Unnamed'}</div>
-            <div style="font-size:12px;color:var(--accent-2);font-family:Arial,sans-serif">${m.designation||m.role||'Member'}</div>
+            <div style="font-size:12px;color:var(--accent-2);">${m.designation||m.role||'Member'}</div>
           </div>
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${m.email}</div>
-        ${m.department ? `<div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
+        ${m.department ? `<div style="font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
         ${m.bio ? `<div style="font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px">${m.bio}</div>` : ''}
         ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
-        ${m.phone ? `<div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
+        ${m.phone ? `<div style="font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
       </div>`;
     }).join('')}
-    ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
+    ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
   </div>`;
 }
 
@@ -71,38 +71,38 @@ function renderAddMemberModal() {
       <form id="member-form" style="padding:20px 28px 24px">
         ${!isEdit ? `
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email Address *</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email Address *</label>
           <input type="email" name="email" required placeholder="team@itimpact.com" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
-          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:5px">They'll receive an invite email to set their password.</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:5px">They'll receive an invite email to set their password.</div>
         </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
             <input type="text" name="full_name" value="${escHtml(m.full_name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation</label>
             <input type="text" name="designation" value="${escHtml(m.designation||'')}" placeholder="e.g. CTO, Designer, Sales Lead" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Department</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Department</label>
             <input type="text" name="department" value="${escHtml(m.department||'')}" placeholder="e.g. Engineering, Sales" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
             <input type="text" name="phone" value="${escHtml(m.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation / Role</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Designation / Role</label>
             <input type="text" name="designation_role" value="${escHtml(m.designation || m.role || '')}" placeholder="e.g. CEO, CTO, Lead Designer, Sales Head" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
-            <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Status</label>
+            <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
               <option value="active" ${m.status==='active'||!m.status?'selected':''}>Active</option>
               <option value="away" ${m.status==='away'?'selected':''}>Away</option>
               <option value="offline" ${m.status==='offline'?'selected':''}>Offline</option>
@@ -110,16 +110,16 @@ function renderAddMemberModal() {
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
-          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:Arial,sans-serif">${escHtml(m.bio||'')}</textarea>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Bio</label>
+          <textarea name="bio" rows="2" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;">${escHtml(m.bio||'')}</textarea>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Skills (comma separated)</label>
           <input type="text" name="skills" value="${(m.skills||[]).join(', ')}" placeholder="e.g. React, Sales, AI, Design" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Add Member'}</button>
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-weight:700;font-size:13px">${isEdit ? 'Save Changes' : 'Add Member'}</button>
         </div>
       </form>
     </div>
@@ -197,62 +197,62 @@ function renderHome() {
     <!-- Greeting bar -->
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
-        <div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
+        <div style="font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
       </div>
       ${pendingPosts > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.07);cursor:pointer" data-nav="social-planner">
         <span style="font-size:13px;color:#f59e0b;font-weight:700">${pendingPosts} post${pendingPosts>1?'s':''} awaiting approval</span>
-        <span style="font-size:11px;color:#f59e0b;font-family:Arial,sans-serif">Review →</span>
+        <span style="font-size:11px;color:#f59e0b;">Review →</span>
       </div>` : ''}
       ${state.contactSubmissions.filter(c=>c.status==='new').length > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(249,115,22,0.35);background:rgba(249,115,22,0.07);cursor:pointer" data-nav="contact-subs">
         <span style="font-size:13px;color:#f97316;font-weight:700">${state.contactSubmissions.filter(c=>c.status==='new').length} new enquir${state.contactSubmissions.filter(c=>c.status==='new').length>1?'ies':'y'}</span>
-        <span style="font-size:11px;color:#f97316;font-family:Arial,sans-serif">View →</span>
+        <span style="font-size:11px;color:#f97316;">View →</span>
       </div>` : ''}
     </div>
 
     <!-- KPI grid: 4 across -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
+        <div style="font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
       </div>
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${fmt$(wonValue)} won</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
+        <div style="font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${fmt$(wonValue)} won</div>
       </div>
       <div class="home-kpi-card" data-nav="projects">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${completedProjects} completed</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
+        <div style="font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${completedProjects} completed</div>
       </div>
       <div class="home-kpi-card" data-nav="job-apps">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${totalCandidates} total candidates</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
+        <div style="font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${totalCandidates} total candidates</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
       <div class="home-kpi-card" data-nav="social-planner">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
+        <div style="font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
       </div>
       <div class="home-kpi-card" data-nav="team">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">active users</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
+        <div style="font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">active users</div>
       </div>
       <div class="home-kpi-card" data-nav="tasks">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
+        <div style="font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
       </div>
       <div class="home-kpi-card" data-nav="contact-subs">
-        <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:6px">${state.contactSubmissions.length} total</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
+        <div style="font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${state.contactSubmissions.length} total</div>
       </div>
     </div>
 
@@ -273,14 +273,14 @@ function renderHome() {
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                 <span style="font-size:12px;font-weight:600;color:var(--text-2)">${s.label}</span>
-                <span style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3)">${count}</span>
+                <span style="font-size:11px;color:var(--text-3)">${count}</span>
               </div>
               <div style="height:6px;border-radius:3px;background:var(--bg-1);overflow:hidden">
                 <div style="height:100%;border-radius:3px;background:${s.color};width:${pct||0}%;transition:width 0.4s"></div>
               </div>
             </div>`;
           }).join('')}
-          ${totalLeads === 0 ? '<div style="text-align:center;padding:16px;color:var(--text-3);font-family:DM Mono,monospace;font-size:11px">No leads yet</div>' : ''}
+          ${totalLeads === 0 ? '<div style="text-align:center;padding:16px;color:var(--text-3);font-size:11px">No leads yet</div>' : ''}
         </div>
       </div>
 
@@ -291,17 +291,17 @@ function renderHome() {
         </div>
         <div style="display:flex;flex-direction:column">
           ${recentActivity.length === 0
-            ? '<div style="text-align:center;padding:24px;color:var(--text-3);font-family:DM Mono,monospace;font-size:11px">No activity yet</div>'
+            ? '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:11px">No activity yet</div>'
             : recentActivity.map(a => `
             <div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
-              <div style="width:32px;height:32px;border-radius:8px;background:${a.bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0">${a.initials}</div>
+              <div style="width:32px;height:32px;border-radius:8px;background:${a.bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${a.initials}</div>
               <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.label}</div>
-                <div style="font-size:11px;color:var(--text-3);font-family:Arial,sans-serif">${a.sub}</div>
+                <div style="font-size:11px;color:var(--text-3);">${a.sub}</div>
               </div>
               <div style="text-align:right;flex-shrink:0">
                 ${a.val ? `<div style="font-size:12px;font-weight:700;color:var(--text)">${a.val}</div>` : ''}
-                <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif">${timeAgo(a.time)}</div>
+                <div style="font-size:10px;color:var(--text-3);">${timeAgo(a.time)}</div>
               </div>
             </div>`).join('')}
         </div>
@@ -314,14 +314,14 @@ function renderHome() {
             <div class="home-card-title">My tasks</div>
             <button class="home-card-link" data-nav="tasks">View all →</button>
           </div>
-          ${myTasks.filter(t => t.status !== 'completed').length === 0 ? '<div style="font-size:11px;color:var(--text-3);font-family:DM Mono,monospace;padding:8px 0">No open tasks — great work!</div>' : ''}
+          ${myTasks.filter(t => t.status !== 'completed').length === 0 ? '<div style="font-size:11px;color:var(--text-3);padding:8px 0">No open tasks — great work!</div>' : ''}
           <div style="display:flex;flex-direction:column;gap:5px">
             ${myTasks.filter(t => t.status !== 'completed').slice(0,5).map(t => {
               const overdue = t.due_date && new Date(t.due_date) < now;
               const sc = t.status==='in_progress'?'#6366f1':'#f59e0b';
               return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:var(--bg-2);border-left:3px solid ${overdue?'#ef4444':sc}">
                 <span style="flex:1;font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.title)}</span>
-                <span style="font-size:9px;color:${overdue?'#ef4444':'var(--text-3)'};font-family:Arial,sans-serif;flex-shrink:0">${t.due_date?new Date(t.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
+                <span style="font-size:9px;color:${overdue?'#ef4444':'var(--text-3)'};flex-shrink:0">${t.due_date?new Date(t.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
               </div>`;
             }).join('')}
           </div>
@@ -356,7 +356,7 @@ function renderHome() {
             ].map(r=>`
             <div style="display:flex;align-items:center;justify-content:space-between">
               <span style="font-size:12px;color:var(--text-2)">${r.label}</span>
-              <span style="font-size:10px;font-family:Arial,sans-serif;padding:2px 9px;border-radius:20px;background:${r.ok?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.08)'};color:${r.ok?'#10b981':'var(--red)'}">
+              <span style="font-size:10px;padding:2px 9px;border-radius:20px;background:${r.ok?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.08)'};color:${r.ok?'#10b981':'var(--red)'}">
                 ${r.ok?'● on':'○ off'}
               </span>
             </div>`).join('')}

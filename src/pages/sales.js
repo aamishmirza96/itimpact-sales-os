@@ -38,10 +38,10 @@ function renderLeads() {
     ${LEAD_STATUSES.map(s=>`<div class="stage-chip ${state.leadFilter===s.id?'active':''}" data-lead-filter="${s.id}">${s.label} (${statusCounts[s.id]||0})</div>`).join('')}
   </div>
 
-  ${state.leadsLoading ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading leads...</div>' : ''}
+  ${state.leadsLoading ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">Loading leads...</div>' : ''}
 
   <div class="rec-cands-list">
-    ${filtered.length === 0 && !state.leadsLoading ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No leads yet. Click "+ New Lead" to add one.</div>' : ''}
+    ${filtered.length === 0 && !state.leadsLoading ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No leads yet. Click "+ New Lead" to add one.</div>' : ''}
     ${filtered.map(l => {
       const st = LEAD_STATUSES.find(s=>s.id===l.status) || LEAD_STATUSES[0];
       return `
@@ -52,7 +52,7 @@ function renderLeads() {
             <div>
               <div class="rec-cand-name">${l.name}</div>
               <div class="rec-cand-role">${l.company||'No company'}${l.email?' · '+l.email:''}</div>
-              ${l.value ? `<div style="font-family:Arial,sans-serif;font-size:11px;color:var(--green);margin-top:2px">$${l.value.toLocaleString()}</div>` : ''}
+              ${l.value ? `<div style="font-size:11px;color:var(--green);margin-top:2px">$${l.value.toLocaleString()}</div>` : ''}
             </div>
             <div class="rec-cand-actions">
               <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
@@ -62,7 +62,7 @@ function renderLeads() {
             </div>
           </div>
           ${l.notes ? `<div class="rec-cand-summary">${l.notes}</div>` : ''}
-          <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif;margin-top:4px">
+          <div style="font-size:10px;color:var(--text-3);margin-top:4px">
             ${l.source||'manual'} · ${new Date(l.created_at).toLocaleDateString()}
             ${l.assigned?.full_name ? ' · → '+l.assigned.full_name : ''}
           </div>
@@ -85,55 +85,55 @@ function renderLeadModal() {
       <form id="lead-form" style="padding:20px 28px 24px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Name *</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Name *</label>
             <input type="text" name="name" required value="${escHtml(l.name||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Company</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Company</label>
             <input type="text" name="company" value="${escHtml(l.company||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
             <input type="email" name="email" value="${escHtml(l.email||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Phone</label>
             <input type="text" name="phone" value="${escHtml(l.phone||'')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Value ($)</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Value ($)</label>
             <input type="number" name="value" value="${l.value||0}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Source</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Source</label>
             <input type="text" name="source" value="${escHtml(l.source||'manual')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To</label>
-            <select name="assigned_to" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Assign To</label>
+            <select name="assigned_to" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;">
               <option value="">Unassigned</option>
               ${state.team.map(m => `<option value="${m.id}" ${l.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Due Date</label>
             <input type="date" name="due_date" value="${l.due_date||''}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
-          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;font-family:Arial,sans-serif">${escHtml(l.notes||'')}</textarea>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Notes</label>
+          <textarea name="notes" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;min-height:80px;resize:vertical;">${escHtml(l.notes||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Delete</button>` : ''}
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
+          ${isEdit ? `<button type="button" id="btn-delete-lead" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:12px">Delete</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-navy);color:#fff;cursor:pointer;font-weight:700;font-size:13px">${isEdit?'Save Changes':'Add Lead'}</button>
         </div>
       </form>
     </div>

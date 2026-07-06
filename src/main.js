@@ -312,30 +312,30 @@ function renderAuthScreen() {
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg);padding:20px;width:100%">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:32px">
-        <div style="font-family:Arial,sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
-        <div style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
+        <div style="font-weight:800;font-size:28px;letter-spacing:-0.5px;margin-bottom:6px">IT<span style="color:var(--accent-2)">Impact</span></div>
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">CRM & Project Management</div>
       </div>
       <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:28px 32px">
         <div style="display:flex;gap:0;margin-bottom:24px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
-          <button class="auth-tab ${isLogin ? 'active' : ''}" data-authview="login" style="flex:1;padding:10px;border:none;cursor:pointer;font-family:Arial,sans-serif;font-size:12px;background:${isLogin ? 'var(--accent-glow)' : 'var(--bg-3)'};color:${isLogin ? 'var(--accent-2)' : 'var(--text-3)'};transition:all 0.15s">Sign In</button>
-          <button class="auth-tab ${!isLogin ? 'active' : ''}" data-authview="signup" style="flex:1;padding:10px;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:Arial,sans-serif;font-size:12px;background:${!isLogin ? 'var(--accent-glow)' : 'var(--bg-3)'};color:${!isLogin ? 'var(--accent-2)' : 'var(--text-3)'};transition:all 0.15s">Sign Up</button>
+          <button class="auth-tab ${isLogin ? 'active' : ''}" data-authview="login" style="flex:1;padding:10px;border:none;cursor:pointer;font-size:12px;background:${isLogin ? 'var(--accent-glow)' : 'var(--bg-3)'};color:${isLogin ? 'var(--accent-2)' : 'var(--text-3)'};transition:all 0.15s">Sign In</button>
+          <button class="auth-tab ${!isLogin ? 'active' : ''}" data-authview="signup" style="flex:1;padding:10px;border:none;border-left:1px solid var(--border);cursor:pointer;font-size:12px;background:${!isLogin ? 'var(--accent-glow)' : 'var(--bg-3)'};color:${!isLogin ? 'var(--accent-2)' : 'var(--text-3)'};transition:all 0.15s">Sign Up</button>
         </div>
-        ${state.authError ? `<div style="padding:10px 12px;background:var(--red-glow);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:12px;color:var(--red);font-family:Arial,sans-serif;margin-bottom:16px">${state.authError}</div>` : ''}
+        ${state.authError ? `<div style="padding:10px 12px;background:var(--red-glow);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:12px;color:var(--red);margin-bottom:16px">${state.authError}</div>` : ''}
         <form id="auth-form">
           ${!isLogin ? `
           <div style="margin-bottom:14px">
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
-            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="Amish Mirza" />
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Full Name</label>
+            <input type="text" name="fullName" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;" placeholder="Amish Mirza" />
           </div>` : ''}
           <div style="margin-bottom:14px">
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
-            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="you@itimpact.com" />
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Email</label>
+            <input type="email" name="email" required style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;" placeholder="you@itimpact.com" />
           </div>
           <div style="margin-bottom:20px">
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
-            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" placeholder="••••••••" />
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Password</label>
+            <input type="password" name="password" required minlength="6" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;" placeholder="••••••••" />
           </div>
-          <button type="submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading ? 'disabled' : ''}>
+          <button type="submit" style="width:100%;padding:12px;background:var(--gradient-navy);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 12px rgba(99,102,241,0.3);transition:all 0.15s" ${state.authLoading ? 'disabled' : ''}>
             ${state.authLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
@@ -543,7 +543,7 @@ async function boot() {
   if (state.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
 
   document.getElementById('app').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;width:100%;background:var(--bg);color:var(--text-3);font-family:Arial,sans-serif;font-size:12px;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;width:100%;background:var(--bg);color:var(--text-3);font-size:12px;flex-direction:column;gap:12px">
       <div style="width:24px;height:24px;border:2px solid rgba(99,102,241,0.3);border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></div>
       ${DB_ENABLED ? 'Connecting...' : 'Loading…'}
     </div>

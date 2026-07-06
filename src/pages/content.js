@@ -83,14 +83,14 @@ function renderArticlesView() {
         <div style="padding:16px 18px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <span class="cand-status-pill" style="background:${a.status==='published'?'var(--green-glow)':a.status==='draft'?'rgba(90,90,114,0.15)':'var(--amber-glow)'};color:${a.status==='published'?'var(--green)':a.status==='draft'?'var(--text-3)':'var(--amber)'}">${a.status}</span>
-            <span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
+            <span style="font-size:10px;color:var(--text-3)">${a.category||'general'}</span>
           </div>
-          <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
+          <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">${a.title}</div>
           <div style="font-size:12px;color:var(--text-2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${(a.body||'').replace(/[#*_]/g,'').substring(0,200)}</div>
-          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:10px">${a.author?.full_name||'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}</div>
         </div>
       </div>`).join('')}
-    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No articles yet. Click "+ New Article" to create one.</div>' : ''}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No articles yet. Click "+ New Article" to create one.</div>' : ''}
   </div>`;
 }
 
@@ -106,50 +106,50 @@ function renderArticleModal() {
       </div>
       <form id="article-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
-          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-family:Arial,sans-serif;font-weight:600" />
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Title *</label>
+          <input type="text" name="title" required value="${escHtml(a.title||'')}" style="width:100%;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;font-weight:600" />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Category</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Category</label>
             <input type="text" name="category" value="${escHtml(a.category||'general')}" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
           <div>
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Cover Image URL</label>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Cover Image URL</label>
             <input type="url" name="cover_image" value="${escHtml(a.cover_image||'')}" placeholder="https://..." style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
           </div>
         </div>
         <div style="margin-bottom:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Content</label>
-            <button type="button" id="btn-ai-write" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:10px;display:flex;align-items:center;gap:5px">✨ AI Write</button>
+            <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em">Content</label>
+            <button type="button" id="btn-ai-write" style="padding:5px 12px;border-radius:6px;border:none;background:var(--gradient-navy);color:#fff;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:5px">✨ AI Write</button>
           </div>
           <div id="ai-write-panel" style="display:none;margin-bottom:10px;padding:12px;background:var(--bg-2);border-radius:8px;border:1px solid var(--border)">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input id="ai-topic" placeholder="Article topic or instructions..." style="flex:1;min-width:180px;padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none" />
-              <select id="ai-tone" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
+              <select id="ai-tone" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
                 <option value="professional">Professional</option>
                 <option value="authoritative">Authoritative</option>
                 <option value="conversational">Conversational</option>
               </select>
-              <select id="ai-length" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
+              <select id="ai-length" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
                 <option value="medium">Medium (~800 words)</option>
                 <option value="short">Short (~500 words)</option>
                 <option value="long">Long (~1500 words)</option>
               </select>
-              <button type="button" id="btn-ai-generate" style="padding:8px 14px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:12px">Generate</button>
+              <button type="button" id="btn-ai-generate" style="padding:8px 14px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-weight:700;font-size:12px">Generate</button>
             </div>
-            <div id="ai-write-status" style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);margin-top:8px"></div>
+            <div id="ai-write-status" style="font-size:11px;color:var(--text-3);margin-top:8px"></div>
           </div>
-          <textarea name="body" id="article-body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;line-height:1.7">${escHtml(a.body||'')}</textarea>
+          <textarea name="body" id="article-body" rows="12" style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;outline:none;resize:vertical;line-height:1.7">${escHtml(a.body||'')}</textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
-          ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Delete</button>` : ''}
-          <select name="status" style="padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:Arial,sans-serif">
+          ${isEdit ? `<button type="button" id="btn-delete-article" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:12px">Delete</button>` : ''}
+          <select name="status" style="padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
             <option value="draft" ${a.status==='draft'||!a.status?'selected':''}>Draft</option>
             <option value="published" ${a.status==='published'?'selected':''}>Published</option>
           </select>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-navy);color:#fff;cursor:pointer;font-weight:700;font-size:13px">${isEdit?'Save':'Create Article'}</button>
         </div>
       </form>
     </div>
@@ -178,7 +178,7 @@ function renderSocialPlanner() {
     ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => {
       const count = state.socialPosts.filter(p => p.status === s.id || (s.id === 'brief' && (p.status === 'draft' || !p.status))).length;
       return `<div style="padding:10px 12px;background:var(--bg-1);border:1px solid ${state.socialPostFilter===s.id?s.color:'var(--border)'};border-radius:8px;cursor:pointer;text-align:center;transition:all 0.15s" data-sp-filter="${s.id}">
-        <div style="font-family:Arial,sans-serif;font-size:9px;color:${s.color};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">${s.label}</div>
+        <div style="font-size:9px;color:${s.color};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">${s.label}</div>
         <div style="font-weight:800;font-size:20px;color:var(--text)">${count}</div>
       </div>`;
     }).join('')}
@@ -219,10 +219,10 @@ function renderSocialPlanner() {
             <div style="flex:1">
               <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.content)}</div>
               <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                ${(p.platforms||[]).map(pl => `<span style="font-family:Arial,sans-serif;font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
+                ${(p.platforms||[]).map(pl => `<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:var(--accent-glow);color:var(--accent-2);border:1px solid rgba(99,102,241,0.2)">${pl}</span>`).join('')}
               </div>
-              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:4px;padding:5px 12px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
-              <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:4px">
+              ${canPublish ? `<button data-publish-linkedin="${p.id}" style="margin-top:4px;padding:5px 12px;border-radius:6px;border:none;background:#0a66c2;color:#fff;cursor:pointer;font-size:11px">🚀 Publish to LinkedIn</button>` : ''}
+              <div style="font-size:10px;color:var(--text-3);margin-top:4px">
                 ${p.author?.full_name||'Unknown'} · ${new Date(p.created_at).toLocaleDateString()}
                 ${scheduledDate ? ' · 📅 '+scheduledDate.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : ''}
                 ${p.posted_at ? ' · ✅ Posted '+new Date(p.posted_at).toLocaleDateString() : ''}
@@ -230,7 +230,7 @@ function renderSocialPlanner() {
               ${(p.approvals||[]).length ? `
                 <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                   ${(p.approvals||[]).map(a => `
-                    <span style="font-family:Arial,sans-serif;font-size:10px;padding:3px 8px;border-radius:4px;background:${a.status==='approved'?'var(--green-glow)':a.status==='rejected'?'var(--red-glow)':'var(--amber-glow)'};color:${a.status==='approved'?'var(--green)':a.status==='rejected'?'var(--red)':'var(--amber)'}">${a.approver?.full_name||'?'}: ${a.status}</span>
+                    <span style="font-size:10px;padding:3px 8px;border-radius:4px;background:${a.status==='approved'?'var(--green-glow)':a.status==='rejected'?'var(--red-glow)':'var(--amber-glow)'};color:${a.status==='approved'?'var(--green)':a.status==='rejected'?'var(--red)':'var(--amber)'}">${a.approver?.full_name||'?'}: ${a.status}</span>
                   `).join('')}
                 </div>` : ''}
             </div>
@@ -238,18 +238,18 @@ function renderSocialPlanner() {
               <select class="cand-status-select" data-sp-status="${p.id}" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-color:${sc}44;color:${sc}">
                 ${POST_STAGES.map(s => `<option value="${s.id}" ${p.status===s.id||(s.id==='brief'&&p.status==='draft')?'selected':''}>${s.label}</option>`).join('')}
               </select>
-              <button data-delete-social-post="${p.id}" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:10px">Delete</button>
+              <button data-delete-social-post="${p.id}" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(239,68,68,0.3);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:10px">Delete</button>
               ${pendingForMe ? `
                 <div style="display:flex;gap:4px">
-                  <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-family:Arial,sans-serif;font-size:10px;font-weight:500">✓ Approve</button>
-                  <button data-reject-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--red-glow);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:10px;font-weight:500">✕ Reject</button>
+                  <button data-approve-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--green-glow);color:var(--green);cursor:pointer;font-size:10px;font-weight:500">✓ Approve</button>
+                  <button data-reject-post="${pendingForMe.id}" data-post-id="${p.id}" style="padding:5px 10px;border-radius:5px;border:none;background:var(--red-glow);color:var(--red);cursor:pointer;font-size:10px;font-weight:500">✕ Reject</button>
                 </div>` : ''}
             </div>
           </div>
         </div>
       </div>`;
     }).join('')}
-    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No posts in this stage.</div>' : ''}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px">No posts in this stage.</div>' : ''}
   </div>`;
 }
 
@@ -263,41 +263,41 @@ function renderSocialPostModal() {
       </div>
       <form id="social-post-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
-          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;line-height:1.7"></textarea>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Post Content *</label>
+          <textarea name="content" required rows="5" placeholder="Write your post..." style="width:100%;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;resize:vertical;line-height:1.7"></textarea>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Platforms</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap" id="platform-chips">
             ${['LinkedIn','Facebook','Instagram','Twitter'].map(p => `
-              <label style="font-family:Arial,sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px">
                 <input type="checkbox" name="platforms" value="${p}" style="accent-color:var(--accent)" /> ${p}
               </label>`).join('')}
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Schedule Date (optional)</label>
           <input type="datetime-local" name="scheduled_date" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none" />
         </div>
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Stage</label>
-          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif">
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Stage</label>
+          <select name="status" style="width:100%;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;">
             ${POST_STAGES.filter(s => s.id !== 'rejected').map(s => `<option value="${s.id}">${s.label} — ${s.desc}</option>`).join('')}
           </select>
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Send for Approval To (optional)</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Send for Approval To (optional)</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap" id="approver-chips">
             ${state.team.filter(m => m.id !== currentUser?.id).map(m => `
-              <label style="font-family:Arial,sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;display:flex;align-items:center;gap:6px">
                 <input type="checkbox" name="approvers" value="${m.id}" style="accent-color:var(--accent)" ${['Ali Faruqi','Abu Bakar'].some(n => (m.full_name||'').includes(n)) ? 'checked' : ''} /> ${m.full_name||m.email}
               </label>`).join('')}
             ${state.team.filter(m => m.id !== currentUser?.id).length === 0 ? '<span style="font-size:11px;color:var(--text-3)">No other team members yet</span>' : ''}
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
-          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-weight:700;font-size:13px">Create Post</button>
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);cursor:pointer;font-size:12px">Cancel</button>
+          <button type="submit" style="padding:9px 20px;border-radius:6px;border:none;background:var(--gradient-navy);color:#fff;cursor:pointer;font-weight:700;font-size:13px">Create Post</button>
         </div>
       </form>
     </div>

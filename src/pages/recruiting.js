@@ -137,7 +137,7 @@ function renderAIAssessments() {
       extraFields: [{key:'company',label:'Company'},{key:'overall_grade',label:'Grade'}],
       renderDetail: (s) => `
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
-          <div style="font-family:Arial,sans-serif;font-weight:800;font-size:32px;color:var(--accent)">${s.overall_score||0}</div>
+          <div style="font-weight:800;font-size:32px;color:var(--accent)">${s.overall_score||0}</div>
           <div style="font-size:13px;color:var(--text-2)">Overall Score ${s.overall_grade?'· Grade '+s.overall_grade:''}</div>
         </div>
         ${s.category_scores && Object.keys(s.category_scores).length ? `
@@ -172,13 +172,13 @@ function renderFilesView() {
             <div>
               <div class="rec-cand-name">${f.full_name}</div>
               <div class="rec-cand-role">${f.email}${f.current_title?' · '+f.current_title:''}</div>
-              <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:4px">
+              <div style="font-size:10px;color:var(--text-3);margin-top:4px">
                 <span style="background:${f.sourceColor}1a;color:${f.sourceColor};padding:2px 8px;border-radius:4px">${f.source}</span>
                 · ${new Date(f.created_at).toLocaleDateString()}
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <a href="${f.resume_url}" target="_blank" rel="noopener" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-family:Arial,sans-serif;font-size:11px;font-weight:600;white-space:nowrap">⬇ Download</a>
+              <a href="${f.resume_url}" target="_blank" rel="noopener" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap">⬇ Download</a>
             </div>
           </div>
         </div>
@@ -375,8 +375,8 @@ function renderTalentPoolTab() {
                 <td><span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span></td>
                 <td>
                   ${c.emailSent
-                    ? '<span style="font-size:10px;color:var(--green);font-family:DM Mono,monospace">✉ Sent</span>'
-                    : '<span style="font-size:10px;color:var(--text-3);font-family:DM Mono,monospace">Not sent</span>'}
+                    ? '<span style="font-size:10px;color:var(--green);">✉ Sent</span>'
+                    : '<span style="font-size:10px;color:var(--text-3);">Not sent</span>'}
                 </td>
                 <td><a href="${c.driveUrl}" target="_blank" class="rec-cv-link">View →</a></td>
               </tr>`;

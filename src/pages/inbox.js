@@ -18,7 +18,7 @@ function renderContactSubmissions() {
       table: 'contact_submissions', idPrefix: 'contact-', statusOptions: CONTACT_STATUSES,
       extraFields: [{key:'company',label:'Company'}],
       renderDetail: (s) => `
-        ${s.service_interest?.length ? `<div style="margin-bottom:10px"><span style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase">Interested in:</span> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${s.service_interest.map(i=>`<span class="rec-tag">${i}</span>`).join('')}</div></div>` : ''}
+        ${s.service_interest?.length ? `<div style="margin-bottom:10px"><span style="font-size:10px;color:var(--text-3);text-transform:uppercase">Interested in:</span> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${s.service_interest.map(i=>`<span class="rec-tag">${i}</span>`).join('')}</div></div>` : ''}
         ${s.message ? `<div style="font-size:13px;color:var(--text-2);line-height:1.7;background:var(--bg-2);padding:12px 14px;border-radius:8px">${s.message}</div>` : ''}
       `,
     })).join('')}
@@ -31,19 +31,19 @@ function renderNotifPanel() {
   return `
   <div id="notif-panel" style="position:fixed;top:0;right:0;width:360px;height:100vh;background:var(--bg-1);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.4);animation:slideIn 0.2s ease">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
+      <div style="font-weight:700;font-size:16px;color:var(--text)">Notifications</div>
       <div style="display:flex;gap:8px">
-        <button id="btn-mark-all-read" style="font-family:Arial,sans-serif;font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
-        <button id="btn-close-notif" style="font-family:Arial,sans-serif;font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
+        <button id="btn-mark-all-read" style="font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">Mark all read</button>
+        <button id="btn-close-notif" style="font-size:12px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer">✕</button>
       </div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:8px">
-      ${state.notifications.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">No notifications yet</div>' : ''}
+      ${state.notifications.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">No notifications yet</div>' : ''}
       ${state.notifications.map(n => `
         <div style="padding:12px 14px;border-radius:8px;margin-bottom:4px;background:${n.read?'transparent':'var(--accent-glow)'};cursor:pointer;transition:background 0.15s" data-notif-id="${n.id}" data-notif-link="${n.link||''}">
           <div style="font-size:12px;font-weight:${n.read?'400':'600'};color:var(--text);margin-bottom:3px">${n.title}</div>
           <div style="font-size:11px;color:var(--text-2);line-height:1.5">${n.body||''}</div>
-          <div style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
+          <div style="font-size:9px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
         </div>`).join('')}
     </div>
   </div>
@@ -90,7 +90,7 @@ function renderNotificationsView() {
         <div class="rec-cand-body">
           <div style="font-size:13px;font-weight:${n.read?'400':'700'};color:var(--text);margin-bottom:3px">${n.title}</div>
           <div style="font-size:12px;color:var(--text-2);line-height:1.5">${n.body||''}</div>
-          <div style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:4px">${timeAgo(n.created_at)}</div>
         </div>
       </div>`).join('')}
   </div>`;

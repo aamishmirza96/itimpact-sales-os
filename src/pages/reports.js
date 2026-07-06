@@ -14,7 +14,7 @@ import { fetchProjects, createProject } from '../projects.js';
 // ── Analytics View ───────────────────────────────────────────────────
 function renderAnalyticsView() {
   const d = state.analyticsData;
-  if (!d) return '<div style="text-align:center;padding:60px;color:var(--text-3);font-family:DM Mono,monospace;font-size:12px">Loading analytics...</div>';
+  if (!d) return '<div style="text-align:center;padding:60px;color:var(--text-3);font-size:12px">Loading analytics...</div>';
   const maxDaily = Math.max(...(d.dailyData||[]).map(x=>x[1]),1);
   const avgPages = d.totalSessions?.length ? (d.totalSessions.reduce((s,x) => s + (x.pages_viewed||0), 0) / d.totalSessions.length).toFixed(1) : '0';
   const devices = {};
@@ -32,10 +32,10 @@ function renderAnalyticsView() {
     <div style="display:flex;gap:6px;align-items:center">
       ${[7,14,30,90].map(n => `<button class="stage-chip ${state.analyticsDays===n?'active':''}" data-analytics-days="${n}">${n}d</button>`).join('')}
       <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-        <input type="date" id="analytics-from" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:Arial,sans-serif;outline:none" />
+        <input type="date" id="analytics-from" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none" />
         <span style="color:var(--text-3);font-size:11px">to</span>
-        <input type="date" id="analytics-to" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:Arial,sans-serif;outline:none" />
-        <button id="btn-analytics-custom" style="padding:6px 12px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-family:Arial,sans-serif;font-size:10px">Go</button>
+        <input type="date" id="analytics-to" style="padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none" />
+        <button id="btn-analytics-custom" style="padding:6px 12px;border-radius:6px;border:none;background:var(--gradient-accent);color:#fff;cursor:pointer;font-size:10px">Go</button>
       </div>
     </div>
   </div>
@@ -50,13 +50,13 @@ function renderAnalyticsView() {
         <div style="font-size:11px;color:var(--text-3)">${googleConnected ? 'Pulling real GA4 data alongside our custom tracker' : 'Connect to see official Google Analytics data'}</div>
       </div>
     </div>
-    ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">Refresh GA Data</button>`}
+    ${!googleConnected ? `<button class="find-leads-btn" id="btn-connect-google">Connect Google</button>` : `<button id="btn-refresh-ga" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text-2);cursor:pointer;font-size:11px">Refresh GA Data</button>`}
   </div>
 
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);${state.liveVisitors.length?'animation:livePulse 1.5s infinite':''}"></span>
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text)">Live Now — ${state.liveVisitors.length} visitor${state.liveVisitors.length===1?'':'s'}</div>
     </div>
     ${state.liveVisitors.length === 0 ? `<div style="font-size:12px;color:var(--text-3);padding:8px 0">No one online right now. Visitors appear here within 90 seconds of activity.</div>` : `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
@@ -65,7 +65,7 @@ function renderAnalyticsView() {
           <span style="font-size:22px">${flagFor(v.country)}</span>
           <div style="min-width:0">
             <div style="font-size:12px;font-weight:600;color:var(--text)">${v.country || 'Unknown location'}</div>
-            <div style="font-size:10px;color:var(--text-3);font-family:Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.device==='mobile'?'📱':'💻'} ${(v.last_page||'').replace(/^https?:\/\/[^/]+/,'')||'/'}</div>
+            <div style="font-size:10px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.device==='mobile'?'📱':'💻'} ${(v.last_page||'').replace(/^https?:\/\/[^/]+/,'')||'/'}</div>
           </div>
         </div>`).join('')}
     </div>`}
@@ -74,17 +74,17 @@ function renderAnalyticsView() {
 
   ${state.gaData ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px">
-    <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
+    <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">📊 Google Analytics — Top Pages (Last 7 Days)</div>
     ${state.gaData.error ? `<div style="color:var(--red);font-size:12px">${state.gaData.error}</div>` : `
     <table style="width:100%;font-size:12px">
-      <thead><tr style="color:var(--text-3);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
+      <thead><tr style="color:var(--text-3);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Page</th><th style="text-align:right">Views</th><th style="text-align:right">Users</th><th style="text-align:right">Avg Duration</th></tr></thead>
       <tbody>
         ${(state.gaData.rows||[]).slice(0,12).map(r => `
           <tr style="border-top:1px solid var(--border-subtle)">
             <td style="padding:8px 0;color:var(--text-2)">${r.dimensionValues[0]?.value || '/'}</td>
             <td style="text-align:right;color:var(--accent);font-weight:600">${r.metricValues[0]?.value || 0}</td>
             <td style="text-align:right;color:var(--text-2)">${r.metricValues[1]?.value || 0}</td>
-            <td style="text-align:right;color:var(--text-3);font-family:Arial,sans-serif">${Math.round(r.metricValues[2]?.value || 0)}s</td>
+            <td style="text-align:right;color:var(--text-3);">${Math.round(r.metricValues[2]?.value || 0)}s</td>
           </tr>`).join('')}
       </tbody>
     </table>`}
@@ -100,45 +100,45 @@ function renderAnalyticsView() {
 
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">📈 Daily Page Views</div>
       ${d.dailyData?.length ? `
       <div style="display:flex;align-items:flex-end;gap:4px;height:140px">
         ${d.dailyData.map(([day, count]) => `
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-            <div style="font-family:Arial,sans-serif;font-size:9px;color:var(--accent-2);font-weight:600">${count}</div>
+            <div style="font-size:9px;color:var(--accent-2);font-weight:600">${count}</div>
             <div style="width:100%;background:var(--gradient-accent);border-radius:6px 6px 0 0;height:${Math.max(count/maxDaily*100,6)}px;transition:height 0.5s;box-shadow:0 0 8px rgba(139,92,246,0.2)"></div>
-            <div style="font-family:Arial,sans-serif;font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
+            <div style="font-size:8px;color:var(--text-3);white-space:nowrap">${day}</div>
           </div>`).join('')}
       </div>` : '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">No page view data yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:18px">🏆 Top Pages</div>
       ${d.topPages.length ? d.topPages.map((p,i) => `
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle)">
-          <span style="font-family:Arial,sans-serif;font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
+          <span style="font-size:10px;color:${i===0?'var(--amber)':i===1?'var(--text-2)':'var(--text-3)'};width:20px;font-weight:${i<3?'700':'400'}">${i+1}.</span>
           <span style="flex:1;font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</span>
-          <span style="font-family:Arial,sans-serif;font-size:11px;color:var(--accent-2);font-weight:600">${p.count}</span>
+          <span style="font-size:11px;color:var(--accent-2);font-weight:600">${p.count}</span>
         </div>`).join('') : '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No page data yet</div>'}
     </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🖱️ Recent Clicks</div>
       ${(d.events||[]).filter(e=>e.event_type==='click').slice(0,8).map(e => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
-          <span style="font-family:Arial,sans-serif;font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
+          <span style="font-size:10px;background:var(--accent-glow);color:var(--accent-2);padding:2px 6px;border-radius:4px">${e.element_tag||'?'}</span>
           <span style="flex:1;font-size:11px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.element_text||'(no text)'}</span>
-          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3)">${e.page_url||'/'}</span>
+          <span style="font-size:9px;color:var(--text-3)">${e.page_url||'/'}</span>
         </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No clicks recorded yet</div>'}
     </div>
     <div style="background:var(--bg-card-flat);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:14px">🕐 Recent Sessions</div>
       ${(d.totalSessions||[]).slice(0,8).map(s => `
         <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
           <span style="font-size:12px">${s.device==='mobile'?'📱':'💻'}</span>
           <span style="flex:1;font-size:11px;color:var(--text-2)">${s.pages_viewed||1} pages · ${s.total_time||0}s</span>
-          <span style="font-family:Arial,sans-serif;font-size:9px;color:var(--text-3)">${new Date(s.started_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+          <span style="font-size:9px;color:var(--text-3)">${new Date(s.started_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
         </div>`).join('') || '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px">No sessions yet</div>'}
     </div>
   </div>`;
@@ -166,9 +166,9 @@ function renderAgentsView() {
     ${AGENTS.map(a => `
       <div class="rec-pos-card" style="cursor:pointer;padding:24px" data-open-agent="${a.id}">
         <div style="width:52px;height:52px;border-radius:14px;background:${a.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">${a.icon}</div>
-        <div style="font-family:Arial,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
+        <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${a.name}</div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.6">${a.desc}</div>
-        <div style="margin-top:14px;font-family:Arial,sans-serif;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
+        <div style="margin-top:14px;font-size:11px;color:${a.color};font-weight:600">Open Agent →</div>
       </div>`).join('')}
   </div>`;
 }
@@ -178,7 +178,7 @@ function renderAgentDetail() {
   return `
   <div class="page-header">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <button id="btn-back-agents" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-3);cursor:pointer;font-family:Arial,sans-serif;font-size:11px">← Back</button>
+      <button id="btn-back-agents" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-3);cursor:pointer;font-size:11px">← Back</button>
       <div class="page-title">${a.icon} ${a.name}</div>
     </div>
     <div class="page-sub">${a.desc}</div>
@@ -198,10 +198,10 @@ function renderAgentDetail() {
 function renderTaskAgentUI(a) {
   return `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-card)">
-    <label style="font-family:Arial,sans-serif;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
+    <label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:10px">
       ${a.id==='marketing' ? 'Context (audience, focus, recent wins, etc.)' : a.id==='leadfinder' ? 'Target context (industry, ICP details)' : 'Position details (title, requirements, seniority)'}
     </label>
-    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:Arial,sans-serif;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
+    <textarea id="agent-input" rows="4" placeholder="${a.id==='marketing' ? 'e.g. Focus on our new AI engineering recruiting service, target healthcare and PE clients' : a.id==='leadfinder' ? 'e.g. Mid-size PE-backed healthcare companies, 50-200 employees' : 'e.g. Senior AI Engineer, remote, requires LangChain + production LLM experience'}" style="width:100%;padding:14px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;margin-bottom:16px">${escHtml(state.agentInput)}</textarea>
     <button id="btn-run-agent" class="find-leads-btn" ${state.agentLoading?'disabled':''} style="background:${a.color}">
       ${state.agentLoading ? '⏳ Thinking...' : '✨ Run Agent'}
     </button>
@@ -210,7 +210,7 @@ function renderTaskAgentUI(a) {
   ${state.agentOutput ? `
   <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:16px;box-shadow:var(--shadow-card)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:var(--text)">Output</div>
+      <div style="font-weight:700;font-size:14px;color:var(--text)">Output</div>
       <button class="copy-btn" id="btn-copy-agent-output">Copy</button>
     </div>
     <div style="font-size:13px;color:var(--text-2);line-height:1.8;white-space:pre-wrap">${escHtml(state.agentOutput)}</div>
@@ -226,7 +226,7 @@ function renderChatAgentUI() {
         <div style="display:flex;${m.role==='user'?'justify-content:flex-end':''}">
           <div style="max-width:75%;padding:12px 16px;border-radius:14px;background:${m.role==='user'?'var(--accent)':'var(--bg-2)'};color:${m.role==='user'?'#fff':'var(--text)'};font-size:13px;line-height:1.7;white-space:pre-wrap">${escHtml(m.content)}</div>
         </div>`).join('')}
-      ${state.agentLoading ? '<div style="color:var(--text-3);font-size:12px;font-family:DM Mono,monospace">Thinking...</div>' : ''}
+      ${state.agentLoading ? '<div style="color:var(--text-3);font-size:12px;">Thinking...</div>' : ''}
     </div>
     <form id="chat-agent-form" style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px">
       <input type="text" name="question" placeholder="Ask about your CRM data..." autocomplete="off" style="flex:1;padding:11px 16px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none" />
@@ -245,22 +245,22 @@ function renderApiKeyModal() {
       </div>
       <form id="api-key-form" style="padding:20px 28px 24px">
         <div style="margin-bottom:14px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Provider</label>
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">Provider</label>
           <select name="provider" style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
             <option value="openai" ${getProvider()==='openai'?'selected':''}>OpenAI (GPT-4o-mini)</option>
             <option value="anthropic" ${getProvider()==='anthropic'?'selected':''}>Anthropic (Claude Sonnet)</option>
           </select>
         </div>
         <div style="margin-bottom:8px">
-          <label style="font-family:Arial,sans-serif;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">API Key</label>
-          <input type="password" name="apiKey" value="${getApiKey()}" placeholder="sk-..." style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:Arial,sans-serif" />
+          <label style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px">API Key</label>
+          <input type="password" name="apiKey" value="${getApiKey()}" placeholder="sk-..." style="width:100%;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;" />
         </div>
         <div style="font-size:11px;color:var(--text-3);margin-bottom:18px;line-height:1.6">
           Get a key at <strong>platform.openai.com/api-keys</strong> or <strong>console.anthropic.com</strong>. Stored only in your browser's local storage — never sent to our servers.
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          ${hasApiKey() ? `<button type="button" id="btn-clear-key" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.25);background:var(--red-light);color:var(--red);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Remove Key</button>` : ''}
-          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-2);cursor:pointer;font-family:Arial,sans-serif;font-size:12px">Cancel</button>
+          ${hasApiKey() ? `<button type="button" id="btn-clear-key" style="margin-right:auto;padding:9px 16px;border-radius:6px;border:1px solid rgba(239,68,68,0.25);background:var(--red-light);color:var(--red);cursor:pointer;font-size:12px">Remove Key</button>` : ''}
+          <button type="button" id="modal-close-btn" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-2);cursor:pointer;font-size:12px">Cancel</button>
           <button type="submit" class="find-leads-btn" style="padding:9px 20px">Save</button>
         </div>
       </form>
@@ -341,17 +341,17 @@ function renderMapView() {
       <div style="position:absolute;bottom:16px;left:16px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(15,12,30,0.85);backdrop-filter:blur(8px);padding:8px 12px;border-radius:8px;border:1px solid var(--glass-border)">
         ${Object.entries(NODE_TYPE_LABELS).map(([type, label]) => {
           const colorMap = { lead:'#f59e0b', project:'#3b82f6', team:'#a855f7', position:'#10b981', candidate:'#ec4899' };
-          return `<div style="display:flex;align-items:center;gap:5px;font-family:Arial,sans-serif;font-size:10px;color:#cfc8ee"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block;box-shadow:0 0 6px ${colorMap[type]}"></span>${label}</div>`;
+          return `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#cfc8ee"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[type]};display:inline-block;box-shadow:0 0 6px ${colorMap[type]}"></span>${label}</div>`;
         }).join('')}
       </div>
     </div>
     ${selected ? `
     <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-card)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-        <span style="font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
+        <span style="font-size:10px;text-transform:uppercase;color:${selected.color}">${NODE_TYPE_LABELS[selected.type]}</span>
         <button id="btn-close-node-panel" style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;width:24px;height:24px;cursor:pointer;color:var(--text-3)">✕</button>
       </div>
-      <div style="font-family:Arial,sans-serif;font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
+      <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:6px">${selected.label}</div>
       <div style="font-size:13px;color:var(--text-2)">${selected.sub||''}</div>
     </div>` : ''}
   </div>`;
