@@ -12,8 +12,8 @@ function allPositions() {
 function allCandidates() {
   // DB candidates use position_id (UUID); hardcoded use positionId (string key)
   const dbC = state.dbCandidates.map(c => ({
-    ...c, positionId: c.position_id, currentRole: c.current_role,
-    currentCompany: c.current_company, emailSent: c.email_sent,
+    ...c, positionId: c.position_id, currentRole: c.candidate_role || c.current_role,
+    currentCompany: c.candidate_company || c.current_company, emailSent: c.email_sent,
     currentSalary: c.current_salary, desiredSalary: c.desired_salary,
     driveUrl: c.drive_url, isDb: true,
   }));
@@ -681,7 +681,7 @@ export function attachRecruitingEvents() {
     const fd = new FormData(e.target);
     const data = {
       name: fd.get('name'), position_id: fd.get('position_id')||null,
-      current_role: fd.get('current_role'), current_company: fd.get('current_company'),
+      candidate_role: fd.get('current_role'), candidate_company: fd.get('current_company'),
       location: fd.get('location'), email: fd.get('email'),
       current_salary: fd.get('current_salary'), desired_salary: fd.get('desired_salary'),
       linkedin: fd.get('linkedin'), drive_url: fd.get('drive_url'),

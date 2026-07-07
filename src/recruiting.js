@@ -46,7 +46,7 @@ export async function createDbCandidate(cand) {
   const initials = cand.initials || cand.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const { data, error } = await supabase.from('recruiting_candidates').insert({
     position_id: cand.position_id || null, name: cand.name, initials,
-    current_role: cand.current_role || '', current_company: cand.current_company || '',
+    candidate_role: cand.current_role || cand.candidate_role || '', candidate_company: cand.current_company || cand.candidate_company || '',
     location: cand.location || '', email: cand.email || '', linkedin: cand.linkedin || '',
     status: cand.status || 'new', email_sent: cand.email_sent || false,
     summary: cand.summary || '', drive_url: cand.drive_url || '',
