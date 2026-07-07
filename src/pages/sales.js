@@ -8,6 +8,7 @@ import {
 } from '../app-core.js';
 import { STAGES, icpProfile, buyingTriggers, bestClients, apolloFilters, disqualifiers, outreachSequences } from '../data.js';
 import { LEAD_STATUSES, fetchLeads, createLead, updateLead, deleteLead } from '../leads.js';
+import { can } from '../access.js';
 
 // ── Leads View ───────────────────────────────────────────────────────
 function renderLeads() {
@@ -243,7 +244,7 @@ function renderPipelineBoard(list) {
           ${cards.map(p => {
             const d = daysInStage(p);
             return `
-            <div class="kanban-card ${p.priority?'priority':''}" draggable="true" data-kb-card="${p.id}" title="Drag to move stage · click for outreach">
+            <div class="kanban-card ${p.priority?'priority':''}" draggable="${can('sales','edit')}" data-kb-card="${p.id}" title="Drag to move stage · click for outreach">
               <div class="kanban-card-top">
                 <div class="avatar" style="width:26px;height:26px;font-size:9px;border-radius:6px">${p.initials}</div>
                 <div class="kanban-card-name">${escHtml(p.name)}${p.priority?' <span class="star">★</span>':''}</div>
@@ -286,6 +287,7 @@ function attachPipelineBoardEvents() {
     zone.addEventListener('drop', e => {
       e.preventDefault();
       zone.classList.remove('drag-over');
+      if (!can('sales', 'edit')) { showToast('Read-only access', 'error'); return; }
       const rawId = e.dataTransfer.getData('text/plain');
       const id = isNaN(rawId) ? rawId : parseInt(rawId);
       const p = prospects.find(x => x.id === id);
@@ -944,10 +946,11 @@ function renderLeadPanel() {
   if (!l) return '';
   const st = LEAD_STATUSES.find(s => s.id === l.status) || LEAD_STATUSES[0];
   const tasks = state.tasks.filter(t => t.entity_type === 'leads' && t.entity_id === String(l.id));
+  const ro = can('sales', 'edit') ? '' : 'disabled'; // read-only members can inspect but not edit
   const field = (label, name, value, type = 'text') => `
     <div class="lp-row">
       <label class="lp-label">${label}</label>
-      <input class="lp-input" type="${type}" data-lp-field="${name}" value="${escHtml(value ?? '')}" />
+      <input class="lp-input" type="${type}" data-lp-field="${name}" value="${escHtml(value ?? '')}" ${ro} />
     </div>`;
   return `
   <div class="slideover" id="lead-panel">
@@ -971,20 +974,20 @@ function renderLeadPanel() {
       ${field('Source', 'source', l.source)}
       <div class="lp-row">
         <label class="lp-label">Status</label>
-        <select class="lp-input" data-lp-field="status">
+        <select class="lp-input" data-lp-field="status" ${ro}>
           ${LEAD_STATUSES.map(s => `<option value="${s.id}" ${l.status===s.id?'selected':''}>${s.label}</option>`).join('')}
         </select>
       </div>
       <div class="lp-row">
         <label class="lp-label">Assigned to</label>
-        <select class="lp-input" data-lp-field="assigned_to">
+        <select class="lp-input" data-lp-field="assigned_to" ${ro}>
           <option value="">Unassigned</option>
           ${state.team.map(m => `<option value="${m.id}" ${l.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
         </select>
       </div>
       <div class="lp-row">
         <label class="lp-label">Notes</label>
-        <textarea class="lp-input" rows="4" data-lp-field="notes">${escHtml(l.notes || '')}</textarea>
+        <textarea class="lp-input" rows="4" data-lp-field="notes" ${ro}>${escHtml(l.notes || '')}</textarea>
       </div>
 
       <div class="slideover-section-title">Activity</div>
@@ -999,11 +1002,12 @@ function renderLeadPanel() {
         const sc = t.status==='completed'?'var(--green)':t.status==='in_progress'?'var(--blue)':'var(--amber)';
         return `<div class="lp-task"><span class="lp-timeline-dot" style="background:${sc}"></span><span style="flex:1">${escHtml(t.title)}</span><span style="font-size:10px;color:var(--text-3)">${t.assignee?.full_name||''}</span></div>`;
       }).join('')}
-      <button class="btn-ghost" id="lp-assign-task" style="margin-top:8px;font-size:11px">+ Assign Follow-up</button>
+      ${can('sales','edit') ? '<button class="btn-ghost" id="lp-assign-task" style="margin-top:8px;font-size:11px">+ Assign Follow-up</button>' : ''}
     </div>
+    ${can('sales','full') ? `
     <div class="slideover-foot">
       <button class="btn-danger-sm" id="lp-delete-lead">Delete Lead</button>
-    </div>
+    </div>` : ''}
   </div>`;
 }
 

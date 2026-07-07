@@ -22,7 +22,8 @@ import {
   fetchContactSubmissions, fetchGeneralCVs, fetchJobApplications, fetchAIAssessments,
 } from './submissions.js';
 
-import { renderHome, renderTeam, attachTeamEvents } from './pages/dashboard.js';
+import { can, accessLevel } from './access.js';
+import { renderHome, renderTeam, attachTeamEvents, renderAccessModal, attachAccessModalEvents } from './pages/dashboard.js';
 import {
   renderPipeline, renderLeads, renderICP, renderDisqualify, renderOutreach,
   renderModal, renderLeadModal, renderLeadPanel,
@@ -72,7 +73,8 @@ const PAGES = [
   { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard, tabs: [
     { key: 'overview', view: 'home', label: 'Overview' },
     // Team relocated from its own top-level nav item — see pages/dashboard.js
-    { key: 'team', view: 'team', label: 'Team', count: () => state.team.length },
+    // (has its own access module so Team & Access can be hidden per member)
+    { key: 'team', view: 'team', label: 'Team', module: 'team', count: () => state.team.length },
   ]},
   { id: 'sales', label: 'Sales', icon: ICONS.sales, tabs: [
     { key: 'apollo', view: 'pipeline', label: 'Sales through Apollo', count: () => prospects.length },
@@ -112,6 +114,12 @@ const PAGES = [
 
 function pageForView(view) {
   return PAGES.find(p => p.tabs.some(t => t.view === view)) || PAGES[0];
+}
+// Access module for a view: tab-level module if set, else the page id
+function moduleForView(view) {
+  const page = pageForView(view);
+  const tab = page.tabs.find(t => t.view === view);
+  return tab?.module || page.id;
 }
 function activeTab(page) {
   const matches = page.tabs.filter(t => t.view === state.view);
@@ -194,6 +202,12 @@ async function loadViewData(view) {
 }
 
 async function navigate(view, { set } = {}) {
+  // Access gate: members without view rights get bounced to the dashboard
+  if (!can(moduleForView(view), 'view')) {
+    showToast('You don\'t have access to that area', 'error');
+    if (view !== 'home') return navigate('home');
+    return;
+  }
   if (state.chatUnsub) { state.chatUnsub(); state.chatUnsub = null; }
   state.activeProject = null;
   state.view = view; state.expandedId = null; state.modal = null;
@@ -213,7 +227,7 @@ function renderSidebar() {
       <div class="sub">Sales OS</div>
     </div>
     <nav class="sidebar-nav">
-      ${PAGES.map(p => `
+      ${PAGES.filter(p => can(p.id, 'view')).map(p => `
         <div class="nav-item ${currentPage.id === p.id ? 'active' : ''}" data-page="${p.id}">
           <span class="nav-icon">${p.icon}</span>${p.label}
         </div>`).join('')}
@@ -270,7 +284,7 @@ function renderTabs() {
   if (page.tabs.length < 2) return '';
   const current = activeTab(page);
   return `<div class="page-tabs">
-    ${page.tabs.map(t => {
+    ${page.tabs.filter(t => can(t.module || page.id, 'view')).map(t => {
       const n = t.count ? t.count() : null;
       return `<button class="page-tab ${current === t ? 'active' : ''}" data-tab="${t.key}" data-tab-page="${page.id}">
         ${t.label}${n != null ? ` <span class="page-tab-count">${n}</span>` : ''}
@@ -379,11 +393,14 @@ function render() {
     attachAuthEvents();
     return;
   }
+  // Read-only members get a UI-level interaction gate on the content area
+  const viewOnly = accessLevel(moduleForView(state.view)) === 'view';
   document.getElementById('app').innerHTML = `
     ${renderSidebar()}
     <div class="content-wrap">
       ${renderTopbar()}
-      <main class="main" id="main-content">
+      <main class="main ${viewOnly ? 'access-view' : ''}" id="main-content">
+        ${viewOnly ? '<div class="access-banner">Read-only access — contact an admin to request edit rights</div>' : ''}
         ${renderTabs()}
         ${renderView()}
       </main>
@@ -420,6 +437,14 @@ function render() {
     el.innerHTML = renderApiKeyModal();
     document.body.appendChild(el.firstElementChild);
     attachApiKeyModalEvents();
+  }
+  if (state.accessMemberData) {
+    const el = document.createElement('div');
+    el.innerHTML = renderAccessModal();
+    if (el.firstElementChild) {
+      document.body.appendChild(el.firstElementChild);
+      attachAccessModalEvents();
+    }
   }
   // Notification panel (slide-over)
   const existingNotif = document.getElementById('notif-panel');

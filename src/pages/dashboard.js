@@ -5,23 +5,31 @@ import { state, escHtml, fmt$, showToast, app } from '../app-core.js';
 import { currentUser, currentProfile } from '../auth.js';
 import { supabase } from '../supabase.js';
 import { fetchTeamMembers as fetchTeam, updateProfile } from '../team.js';
+import { ROLES, MODULES, LEVELS, isElevated, isCeo, assignableRoles, canManageMember, accessLevel } from '../access.js';
 
 // ── Team View ────────────────────────────────────────────────────────
+// Legacy CEO code kept as a fallback so the owner isn't locked out before
+// running supabase-rbac.sql; role-based access (ceo/admin) is the real path.
 const CEO_CODE = '123456';
 let ceoUnlocked = false;
 
+const ROLE_COLORS = { ceo: 'var(--accent)', admin: 'var(--blue)', member: 'var(--green)', viewer: 'var(--text-3)' };
+
+function canManageTeam() { return isElevated() || ceoUnlocked; }
+
 function renderTeam() {
   const active = state.team.filter(m => m.status !== 'offline');
+  const manage = canManageTeam();
   return `
   <div class="page-header pipe-header">
     <div>
-      <div class="page-title">Team</div>
-      <div class="page-sub">${state.team.length} members · ${active.length} active</div>
+      <div class="page-title">Team & Access</div>
+      <div class="page-sub">${state.team.length} members · ${active.length} active · roles: CEO → Admin → Member → Viewer</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      ${ceoUnlocked ? `
+      ${manage ? `
         <button class="find-leads-btn" id="btn-add-member">+ Add Member</button>
-        <button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>
+        ${ceoUnlocked ? `<button id="btn-lock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--green);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px">🔓 Unlocked</button>` : ''}
       ` : `
         <button id="btn-unlock-team" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);color:var(--text-3);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px">🔒 CEO Lock</button>
       `}
@@ -30,9 +38,12 @@ function renderTeam() {
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
     ${state.team.map(m => {
       const statusColor = m.status==='active' ? 'var(--green)' : m.status==='away' ? 'var(--amber)' : 'var(--text-3)';
+      const role = ROLES.find(r => r.id === m.role) || ROLES[2];
+      const rc = ROLE_COLORS[role.id] || 'var(--green)';
+      const canEditAccess = manage && (canManageMember(m) || (ceoUnlocked && m.id !== currentUser?.id));
       return `
       <div class="rec-cand-card" style="flex-direction:column;gap:0;position:relative">
-        ${ceoUnlocked ? `
+        ${manage ? `
           <div style="position:absolute;top:12px;right:12px;display:flex;gap:4px">
             <button class="team-edit-btn" data-edit-member="${m.id}" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--bg-3);color:var(--accent-2);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Edit">✎</button>
             <button class="team-delete-btn" data-delete-member="${m.id}" data-member-name="${escHtml(m.full_name||m.email)}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,0.2);background:var(--red-glow);color:var(--red);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" title="Remove">✕</button>
@@ -44,18 +55,104 @@ function renderTeam() {
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:15px;font-weight:600;color:var(--text)">${m.full_name||'Unnamed'}</div>
-            <div style="font-size:12px;color:var(--accent-2);">${m.designation||m.role||'Member'}</div>
+            <div style="font-size:12px;color:var(--accent-2);">${m.designation||'—'}</div>
           </div>
         </div>
+        <div style="margin-bottom:8px"><span class="role-badge" style="background:${rc}1a;color:${rc};border:1px solid ${rc}44">${role.label}</span></div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${m.email}</div>
         ${m.department ? `<div style="font-size:10px;color:var(--text-3);margin-bottom:6px">🏢 ${m.department}</div>` : ''}
         ${m.bio ? `<div style="font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px">${m.bio}</div>` : ''}
         ${m.skills?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${m.skills.map(s => `<span class="rec-tag">${s}</span>`).join('')}</div>` : ''}
         ${m.phone ? `<div style="font-size:11px;color:var(--text-3)">📞 ${m.phone}</div>` : ''}
+        ${canEditAccess ? `<button class="btn-ghost" data-access-member="${m.id}" style="margin-top:10px;font-size:11px;align-self:flex-start">🔑 Access & Role</button>` : ''}
       </div>`;
     }).join('')}
     ${state.team.length === 0 ? '<div style="text-align:center;padding:48px;color:var(--text-3);font-size:12px;background:var(--bg-1);border:1px solid var(--border);border-radius:12px;grid-column:1/-1">No team members yet. Sign up users to see them here.</div>' : ''}
   </div>`;
+}
+
+// ── Access & Role editor (RBAC) ───────────────────────────────────────
+function renderAccessModal() {
+  const m = state.accessMemberData;
+  if (!m) return '';
+  const roles = ceoUnlocked && !isElevated() ? ROLES : assignableRoles();
+  const role = m.role || 'member';
+  const showMatrix = ['member', 'viewer'].includes(role);
+  return `
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">🔑 Access & Role — ${escHtml(m.full_name || m.email)}</div>
+          <div class="modal-sub">CEO and Admin always have full access; Members and Viewers get per-module levels.</div>
+        </div>
+        <button class="modal-close" id="access-modal-close">✕</button>
+      </div>
+      <div style="padding:20px 28px 24px">
+        <div style="margin-bottom:16px">
+          <label class="form-label" style="display:block;margin-bottom:6px">Role</label>
+          <select class="form-input" id="access-role">
+            ${ROLES.map(r => {
+              const allowed = roles.some(x => x.id === r.id) || r.id === role;
+              return `<option value="${r.id}" ${role===r.id?'selected':''} ${allowed?'':'disabled'}>${r.label} — ${r.desc}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div id="access-matrix" style="${showMatrix ? '' : 'display:none'}">
+          <label class="form-label" style="display:block;margin-bottom:8px">Module access</label>
+          <div class="access-grid">
+            <div class="access-grid-head">Module</div>
+            ${LEVELS.map(l => `<div class="access-grid-head" style="text-align:center">${l.label}</div>`).join('')}
+            ${MODULES.map(mod => {
+              const lvl = accessLevel(mod.id, { ...m, role });
+              return `
+              <div class="access-grid-label">${mod.label}</div>
+              ${LEVELS.map(l => `
+                <label class="access-radio">
+                  <input type="radio" name="perm-${mod.id}" value="${l.id}" ${lvl===l.id?'checked':''} />
+                </label>`).join('')}`;
+            }).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px">None hides the area · View is read-only · Edit allows changes · Full allows delete/manage</div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn-ghost" id="access-cancel">Cancel</button>
+          <button type="button" class="btn-primary" id="access-save">Save Access</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachAccessModalEvents() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay) return;
+  const close = () => { state.accessMemberData = null; overlay.remove(); app.render(); };
+  document.getElementById('access-modal-close')?.addEventListener('click', close);
+  document.getElementById('access-cancel')?.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  // Matrix only applies to member/viewer — hide it for ceo/admin
+  document.getElementById('access-role')?.addEventListener('change', (e) => {
+    const matrix = document.getElementById('access-matrix');
+    if (matrix) matrix.style.display = ['member', 'viewer'].includes(e.target.value) ? '' : 'none';
+  });
+  document.getElementById('access-save')?.addEventListener('click', async () => {
+    const m = state.accessMemberData;
+    const role = document.getElementById('access-role')?.value || m.role || 'member';
+    const permissions = {};
+    MODULES.forEach(mod => {
+      const checked = document.querySelector(`input[name="perm-${mod.id}"]:checked`);
+      if (checked) permissions[mod.id] = checked.value;
+    });
+    try {
+      await updateProfile(m.id, { role, permissions });
+      state.team = await fetchTeam();
+      showToast(`Access updated for ${m.full_name || m.email} ✓`, 'success');
+      close();
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    }
+  });
 }
 
 function renderAddMemberModal() {
@@ -409,6 +506,13 @@ function attachTeamEvents() {
       }
     });
   });
+  // RBAC: open the Access & Role editor
+  document.querySelectorAll('[data-access-member]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = state.team.find(x => x.id === btn.dataset.accessMember);
+      if (m) { state.accessMemberData = { ...m }; app.render(); }
+    });
+  });
 }
 
 function renderTeamModal() {
@@ -471,4 +575,4 @@ function attachTeamModalEvents() {
 }
 
 
-export { renderHome, renderTeam, attachTeamEvents };
+export { renderHome, renderTeam, attachTeamEvents, renderAccessModal, attachAccessModalEvents };

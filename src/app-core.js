@@ -98,6 +98,7 @@ const state = {
   // Team
   team: [],
   editMemberData: null,
+  accessMemberData: null, // member whose role/permissions are being edited
   // Articles
   articles: [],
   articleModal: null,

@@ -3,6 +3,7 @@
 import { state, candidates, persistCandidate, escHtml, showToast, app } from '../app-core.js';
 import { positions, CANDIDATE_STATUSES } from '../recruiting.js';
 import { submissionCard, CV_STATUSES, JOBAPP_STATUSES, AI_STATUSES } from './submissions-shared.js';
+import { can } from '../access.js';
 
 function renderGeneralCVs() {
   const items = state.generalCVs;
@@ -463,7 +464,7 @@ function renderCandidatePanel() {
       <div class="slideover-section-title">Properties</div>
       <div class="lp-row">
         <label class="lp-label">Status</label>
-        <select class="lp-input" id="cp-status">
+        <select class="lp-input" id="cp-status" ${can('recruiting','edit')?'':'disabled'}>
           ${CANDIDATE_STATUSES.map(s => `<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
         </select>
       </div>
@@ -473,12 +474,12 @@ function renderCandidatePanel() {
       <div class="lp-row">
         <label class="lp-label">Email sent</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer">
-          <input type="checkbox" id="cp-email-sent" ${c.emailSent?'checked':''} style="accent-color:var(--accent)" /> Outreach email sent to candidate
+          <input type="checkbox" id="cp-email-sent" ${c.emailSent?'checked':''} ${can('recruiting','edit')?'':'disabled'} style="accent-color:var(--accent)" /> Outreach email sent to candidate
         </label>
       </div>
       <div class="lp-row">
         <label class="lp-label">Notes</label>
-        <textarea class="lp-input" rows="4" id="cp-notes">${escHtml(c.notes || '')}</textarea>
+        <textarea class="lp-input" rows="4" id="cp-notes" ${can('recruiting','edit')?'':'disabled'}>${escHtml(c.notes || '')}</textarea>
       </div>
 
       <div class="slideover-section-title">Summary</div>

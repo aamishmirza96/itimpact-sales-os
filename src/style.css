@@ -575,6 +575,22 @@ tr.expanded-row td { padding: 0; background: var(--bg-2); border-bottom: 1px sol
 .search-item-sub { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
 .search-empty { padding: 14px; font-size: 12px; color: var(--text-3); text-align: center; }
 
+/* ── RBAC: role badges, access matrix, read-only gate ── */
+.role-badge { font-family: var(--font); font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; }
+.access-grid { display: grid; grid-template-columns: 1.6fr repeat(4, 1fr); gap: 2px 0; align-items: center; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+.access-grid-head { font-family: var(--font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); padding: 4px 0 8px; }
+.access-grid-label { font-size: 12.5px; color: var(--text); padding: 6px 0; }
+.access-radio { display: flex; justify-content: center; padding: 6px 0; cursor: pointer; }
+.access-radio input { accent-color: var(--accent); cursor: pointer; }
+.modal-sub { max-width: 380px; }
+.access-banner { background: var(--amber-light); border: 1px solid rgba(245,158,11,0.3); color: #92600a; font-size: 12px; font-weight: 600; padding: 9px 14px; border-radius: var(--radius-sm); margin-bottom: 16px; }
+[data-theme="dark"] .access-banner { color: var(--amber); }
+/* Read-only members: mutating controls are inert inside the content area.
+   Navigation-ish controls stay usable (tabs are outside via .page-tabs). */
+.access-view button, .access-view select, .access-view input, .access-view textarea { pointer-events: none; opacity: 0.55; }
+.access-view .page-tab, .access-view #pipeline-search, .access-view .stage-chip, .access-view .sector-chip, .access-view .copy-btn, .access-view .view-switch-btn, .access-view .sort-select, .access-view .th-sortable { pointer-events: auto; opacity: 1; }
+.access-view .kanban-card { cursor: default; }
+
 /* ── Responsive ── */
 @media (max-width: 1200px) { .metrics-row { grid-template-columns: repeat(3, 1fr); } .expanded-grid { grid-template-columns: 1fr 1fr; } .clients-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 900px) { .sidebar { width: 200px; min-width: 200px; } .main { margin-left: 200px; padding: 20px; } .metrics-row { grid-template-columns: repeat(2, 1fr); } .social-layout, .rec-cands-layout { grid-template-columns: 1fr; } .icp-grid, .apollo-grid, .rec-two-col { grid-template-columns: 1fr; } }
