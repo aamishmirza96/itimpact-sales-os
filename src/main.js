@@ -187,7 +187,11 @@ async function loadViewData(view) {
     state.mapNodes = g.nodes; state.mapEdges = g.edges;
   }
   if (view === 'tasks') state.tasks = await fetchTasks();
-  if (view === 'recruiting') { state.dbPositions = await fetchDbPositions(); state.dbCandidates = await fetchDbCandidates(); }
+  if (view === 'recruiting') {
+    const [posRes, candRes] = await Promise.all([fetchDbPositions(), fetchDbCandidates()]);
+    state.dbPositions = posRes.rows; state.dbCandidates = candRes.rows;
+    state.recruitingDbReady = posRes.tableExists;
+  }
   if (view === 'contact-subs') { state.contactSubmissions = await fetchContactSubmissions(); state.tasks = await fetchTasks(); }
   if (view === 'general-cvs') { state.generalCVs = await fetchGeneralCVs(); state.tasks = await fetchTasks(); }
   if (view === 'job-apps') { state.jobApplications = await fetchJobApplications(); state.tasks = await fetchTasks(); }
@@ -770,8 +774,9 @@ async function boot() {
     state.leadsLoading = false;
     state.unreadCount = unread;
     state.tasks = tasks;
-    state.dbPositions = dbPositions;
-    state.dbCandidates = dbCandidates;
+    state.dbPositions = dbPositions.rows;
+    state.dbCandidates = dbCandidates.rows;
+    state.recruitingDbReady = dbPositions.tableExists;
     state.notifUnsub = subscribeToNotifications((notif) => {
       state.unreadCount++;
       showToast(notif.title, 'info');

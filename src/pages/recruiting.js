@@ -7,18 +7,16 @@ import { can } from '../access.js';
 
 // Merge hardcoded + DB positions/candidates
 function allPositions() {
-  return state.dbPositions.length > 0 ? state.dbPositions : positions;
+  return state.recruitingDbReady ? state.dbPositions : positions;
 }
 function allCandidates() {
-  // DB candidates use position_id (UUID); hardcoded use positionId (string key)
   const dbC = state.dbCandidates.map(c => ({
     ...c, positionId: c.position_id, currentRole: c.candidate_role || c.current_role,
     currentCompany: c.candidate_company || c.current_company, emailSent: c.email_sent,
     currentSalary: c.current_salary, desiredSalary: c.desired_salary,
     driveUrl: c.drive_url, isDb: true,
   }));
-  if (state.dbPositions.length > 0) return dbC;
-  // fallback: hardcoded candidates + db candidates
+  if (state.recruitingDbReady) return dbC;
   return [...candidates, ...dbC];
 }
 
@@ -211,7 +209,7 @@ const STATUS_COLORS = { Active:'#10b981', Paused:'#f59e0b', Closed:'#ef4444' };
 function renderRecruiting() {
   const pos = allPositions();
   const cands = allCandidates();
-  const usingDb = state.dbPositions.length > 0;
+  const usingDb = state.recruitingDbReady;
   return `
   <div class="page-header">
     <div>
@@ -613,7 +611,7 @@ export function attachRecruitingEvents() {
       if (!confirm('Delete this position? This cannot be undone.')) return;
       try {
         await deleteDbPosition(btn.dataset.deletePos);
-        state.dbPositions = await fetchDbPositions();
+        state.dbPositions = (await fetchDbPositions()).rows;
         showToast('Position deleted', 'success'); app.render();
       } catch(err) { showToast('Error: ' + err.message, 'error'); }
     });
@@ -641,7 +639,7 @@ export function attachRecruitingEvents() {
     try {
       if (state.positionEditData?.id) { await updateDbPosition(state.positionEditData.id, data); showToast('Position updated ✓', 'success'); }
       else { await createDbPosition(data); showToast('Position added ✓', 'success'); }
-      state.dbPositions = await fetchDbPositions();
+      state.dbPositions = (await fetchDbPositions()).rows;
       state.positionModal = null; state.positionEditData = null; app.render();
     } catch(err) { showToast('Error: ' + err.message, 'error'); }
   });
@@ -665,7 +663,7 @@ export function attachRecruitingEvents() {
       const id = btn.dataset.deleteCand;
       const isDb = btn.dataset.candDb === '1';
       try {
-        if (isDb) { await deleteDbCandidate(id); state.dbCandidates = await fetchDbCandidates(); }
+        if (isDb) { await deleteDbCandidate(id); state.dbCandidates = (await fetchDbCandidates()).rows; }
         else { showToast('Hardcoded candidates can only be deleted after migrating to DB. Run supabase-recruiting.sql first.', 'error'); return; }
         showToast('Candidate deleted', 'success'); app.render();
       } catch(err) { showToast('Error: ' + err.message, 'error'); }
@@ -691,7 +689,7 @@ export function attachRecruitingEvents() {
       if (state.candidateEditData?.id && state.candidateEditData?.isDb) {
         await updateDbCandidate(state.candidateEditData.id, data); showToast('Candidate updated ✓', 'success');
       } else { await createDbCandidate(data); showToast('Candidate added ✓', 'success'); }
-      state.dbCandidates = await fetchDbCandidates();
+      state.dbCandidates = (await fetchDbCandidates()).rows;
       state.candidateModal = null; state.candidateEditData = null; app.render();
     } catch(err) { showToast('Error: ' + err.message, 'error'); }
   });

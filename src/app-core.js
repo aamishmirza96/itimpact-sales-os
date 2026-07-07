@@ -154,6 +154,7 @@ const state = {
   recExpandedCandidate: null,
   dbPositions: [],
   dbCandidates: [],
+  recruitingDbReady: false,
   positionModal: null,   // 'new' | 'edit'
   positionEditData: null,
   candidateModal: null,  // 'new' | 'edit'

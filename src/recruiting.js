@@ -2,11 +2,19 @@ import { supabase } from './supabase.js';
 import { currentUser } from './auth.js';
 
 // ── DB Functions ─────────────────────────────────────────────────────
+// Returns { rows, tableExists }
 export async function fetchDbPositions() {
-  if (!supabase) return [];
+  if (!supabase) return { rows: [], tableExists: false };
   const { data, error } = await supabase.from('recruiting_positions').select('*').order('created_at', { ascending: false });
-  if (error) { console.warn('fetchDbPositions', error); return []; }
-  return data || [];
+  if (error) { console.warn('fetchDbPositions', error); return { rows: [], tableExists: false }; }
+  return { rows: data || [], tableExists: true };
+}
+
+export async function fetchDbCandidates() {
+  if (!supabase) return { rows: [], tableExists: false };
+  const { data, error } = await supabase.from('recruiting_candidates').select('*').order('created_at', { ascending: false });
+  if (error) { console.warn('fetchDbCandidates', error); return { rows: [], tableExists: false }; }
+  return { rows: data || [], tableExists: true };
 }
 
 export async function createDbPosition(pos) {
@@ -32,13 +40,6 @@ export async function deleteDbPosition(id) {
   if (!supabase) return;
   const { error } = await supabase.from('recruiting_positions').delete().eq('id', id);
   if (error) throw error;
-}
-
-export async function fetchDbCandidates() {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from('recruiting_candidates').select('*').order('created_at', { ascending: false });
-  if (error) { console.warn('fetchDbCandidates', error); return []; }
-  return data || [];
 }
 
 export async function createDbCandidate(cand) {
