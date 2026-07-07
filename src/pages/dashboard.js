@@ -72,50 +72,110 @@ function renderTeam() {
 }
 
 // ── Access & Role editor (RBAC) ───────────────────────────────────────
+const PERMISSION_LEVELS = [
+  { id: 'view', label: 'Viewer', desc: 'Can see content only — no changes', icon: '👁' },
+  { id: 'comment', label: 'Commenter', desc: 'Can add notes and comments', icon: '💬' },
+  { id: 'edit', label: 'Editor', desc: 'Can add and edit — no deleting', icon: '✏️' },
+  { id: 'full', label: 'Full Access', desc: 'Add, edit and delete everything in their sections', icon: '🔓' },
+];
+
+const SECTION_MODULES = [
+  { id: 'sales',      label: 'Sales',              icon: '💼', desc: 'Leads, pipeline, prospects' },
+  { id: 'recruiting', label: 'Recruiting',          icon: '🧑‍💼', desc: 'Positions, candidates, CVs' },
+  { id: 'projects',   label: 'Projects & Tasks',    icon: '📋', desc: 'All projects and tasks' },
+  { id: 'content',    label: 'Content',             icon: '📣', desc: 'Social planner, articles' },
+  { id: 'inbox',      label: 'Inbox',               icon: '📥', desc: 'Forms, contact submissions' },
+  { id: 'dashboard',  label: 'Dashboard & Reports', icon: '📊', desc: 'Home overview, analytics' },
+];
+
+function getCurrentSections(m) {
+  const perms = m.permissions || {};
+  return SECTION_MODULES.filter(s => perms[s.id] && perms[s.id] !== 'none').map(s => s.id);
+}
+
+function getCurrentPermLevel(m) {
+  const perms = m.permissions || {};
+  const levels = Object.values(perms).filter(v => v && v !== 'none');
+  if (!levels.length) return 'edit';
+  if (levels.includes('full')) return 'full';
+  if (levels.includes('edit')) return 'edit';
+  if (levels.includes('comment')) return 'comment';
+  return 'view';
+}
+
 function renderAccessModal() {
   const m = state.accessMemberData;
   if (!m) return '';
-  const roles = ceoUnlocked && !isElevated() ? ROLES : assignableRoles();
+  const roles = assignableRoles();
   const role = m.role || 'member';
-  const showMatrix = ['member', 'viewer'].includes(role);
+  const isRestricted = ['member', 'viewer'].includes(role);
+  const currentSections = getCurrentSections(m);
+  const currentLevel = getCurrentPermLevel(m);
+  const allChecked = currentSections.length === SECTION_MODULES.length || currentSections.includes('all');
+
   return `
   <div class="modal-overlay" id="modal-overlay">
-    <div class="modal-box" style="max-width:560px">
-      <div class="modal-header">
+    <div class="modal-box" style="max-width:560px;max-height:90vh;overflow-y:auto">
+      <div class="modal-header" style="position:sticky;top:0;background:var(--bg-1);z-index:1;padding-bottom:12px">
         <div>
-          <div class="modal-title">🔑 Access & Role — ${escHtml(m.full_name || m.email)}</div>
-          <div class="modal-sub">CEO, COO and Admin always have full access. For Members and Viewers, choose what each page shows — "Hidden" removes the page from their sidebar entirely.</div>
+          <div class="modal-title">🔑 Access & Role</div>
+          <div class="modal-sub" style="font-size:12px;color:var(--text-3);margin-top:2px">${escHtml(m.full_name || m.email)}</div>
         </div>
         <button class="modal-close" id="access-modal-close">✕</button>
       </div>
-      <div style="padding:20px 28px 24px">
-        <div style="margin-bottom:16px">
-          <label class="form-label" style="display:block;margin-bottom:6px">Role</label>
-          <select class="form-input" id="access-role">
+      <div style="padding:0 28px 24px">
+
+        <!-- Role -->
+        <div style="margin-bottom:20px">
+          <label class="form-label" style="display:block;margin-bottom:8px;font-weight:600">Role</label>
+          <select class="form-input" id="access-role" style="width:100%">
             ${ROLES.map(r => {
-              const allowed = roles.some(x => x.id === r.id) || r.id === role;
+              const allowed = roles.some(x => x.id === r.id) || r.id === role || isCeo();
               return `<option value="${r.id}" ${role===r.id?'selected':''} ${allowed?'':'disabled'}>${r.label} — ${r.desc}</option>`;
             }).join('')}
           </select>
+          <div style="font-size:11px;color:var(--text-3);margin-top:5px">CEO and COO always have full access to everything and cannot be restricted.</div>
         </div>
-        <div id="access-matrix" style="${showMatrix ? '' : 'display:none'}">
-          <label class="form-label" style="display:block;margin-bottom:8px">Page access — pick what this person can see and do on each page</label>
-          <div class="access-grid">
-            <div class="access-grid-head">Module</div>
-            ${LEVELS.map(l => `<div class="access-grid-head" style="text-align:center">${l.label}</div>`).join('')}
-            ${MODULES.map(mod => {
-              const lvl = accessLevel(mod.id, { ...m, role });
-              return `
-              <div class="access-grid-label">${mod.label}</div>
-              ${LEVELS.map(l => `
-                <label class="access-radio">
-                  <input type="radio" name="perm-${mod.id}" value="${l.id}" ${lvl===l.id?'checked':''} />
-                </label>`).join('')}`;
-            }).join('')}
+
+        <!-- Permission level + section access (only for member/viewer) -->
+        <div id="access-restrictions" style="${isRestricted ? '' : 'display:none'}">
+
+          <div style="border-top:1px solid var(--border);padding-top:18px;margin-bottom:18px">
+            <label class="form-label" style="display:block;margin-bottom:10px;font-weight:600">Permission Level</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              ${PERMISSION_LEVELS.map(l => `
+              <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:8px;border:2px solid ${currentLevel===l.id?'var(--accent)':'var(--border)'};cursor:pointer;transition:border-color 0.15s" id="perm-card-${l.id}">
+                <input type="radio" name="perm-level" value="${l.id}" ${currentLevel===l.id?'checked':''} style="margin-top:2px;accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">${l.icon} ${l.label}</div>
+                  <div style="font-size:11px;color:var(--text-3);margin-top:2px">${l.desc}</div>
+                </div>
+              </label>`).join('')}
+            </div>
           </div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:8px">Hidden = page removed from their sidebar · View only = can look but not change · Can edit = normal work · Full control = can also delete/manage</div>
+
+          <div style="border-top:1px solid var(--border);padding-top:18px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <label class="form-label" style="font-weight:600;margin:0">Section Access</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer">
+                <input type="checkbox" id="access-all-sections" ${allChecked?'checked':''} style="accent-color:var(--accent)">
+                All sections
+              </label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="section-checkboxes">
+              ${SECTION_MODULES.map(s => `
+              <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--bg-2);cursor:pointer">
+                <input type="checkbox" name="section-${s.id}" class="section-cb" value="${s.id}" ${(allChecked||currentSections.includes(s.id))?'checked':''} style="accent-color:var(--accent)">
+                <div>
+                  <div style="font-size:12px;font-weight:500">${s.icon} ${s.label}</div>
+                  <div style="font-size:10px;color:var(--text-3)">${s.desc}</div>
+                </div>
+              </label>`).join('')}
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
           <button type="button" class="btn-ghost" id="access-cancel">Cancel</button>
           <button type="button" class="btn-primary" id="access-save">Save Access</button>
         </div>
@@ -131,19 +191,49 @@ function attachAccessModalEvents() {
   document.getElementById('access-modal-close')?.addEventListener('click', close);
   document.getElementById('access-cancel')?.addEventListener('click', close);
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-  // Matrix only applies to member/viewer — hide it for ceo/admin
+
+  // Show/hide restrictions based on role
   document.getElementById('access-role')?.addEventListener('change', (e) => {
-    const matrix = document.getElementById('access-matrix');
-    if (matrix) matrix.style.display = ['member', 'viewer'].includes(e.target.value) ? '' : 'none';
+    const restrictions = document.getElementById('access-restrictions');
+    if (restrictions) restrictions.style.display = ['member', 'viewer'].includes(e.target.value) ? '' : 'none';
   });
+
+  // Permission level card highlight
+  document.querySelectorAll('input[name="perm-level"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      PERMISSION_LEVELS.forEach(l => {
+        const card = document.getElementById(`perm-card-${l.id}`);
+        if (card) card.style.borderColor = l.id === radio.value ? 'var(--accent)' : 'var(--border)';
+      });
+    });
+  });
+
+  // "All sections" toggle
+  document.getElementById('access-all-sections')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.section-cb').forEach(cb => { cb.checked = e.target.checked; });
+  });
+  document.querySelectorAll('.section-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const all = document.querySelectorAll('.section-cb');
+      const allChecked = [...all].every(c => c.checked);
+      const allToggle = document.getElementById('access-all-sections');
+      if (allToggle) allToggle.checked = allChecked;
+    });
+  });
+
   document.getElementById('access-save')?.addEventListener('click', async () => {
     const m = state.accessMemberData;
     const role = document.getElementById('access-role')?.value || m.role || 'member';
+    const level = document.querySelector('input[name="perm-level"]:checked')?.value || 'edit';
     const permissions = {};
-    MODULES.forEach(mod => {
-      const checked = document.querySelector(`input[name="perm-${mod.id}"]:checked`);
-      if (checked) permissions[mod.id] = checked.value;
-    });
+    const allToggle = document.getElementById('access-all-sections');
+    if (allToggle?.checked) {
+      SECTION_MODULES.forEach(s => { permissions[s.id] = level; });
+    } else {
+      document.querySelectorAll('.section-cb:checked').forEach(cb => { permissions[cb.value] = level; });
+      // hide unchecked sections
+      document.querySelectorAll('.section-cb:not(:checked)').forEach(cb => { permissions[cb.value] = 'none'; });
+    }
     try {
       await updateProfile(m.id, { role, permissions });
       state.team = await fetchTeam();

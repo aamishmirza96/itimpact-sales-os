@@ -1,11 +1,33 @@
 import { supabase } from './supabase.js';
-import { currentUser } from './auth.js';
+import { currentUser, currentProfile } from './auth.js';
+
+// Roles that can see ALL projects regardless of membership
+const FULL_ACCESS_ROLES = ['ceo', 'coo', 'admin'];
 
 // ── Projects CRUD ────────────────────────────────────────────────────
 export async function fetchProjects() {
   if (!supabase) return [];
-  const { data } = await supabase.from('projects').select('*, creator:created_by(full_name)').order('created_at', { ascending: false });
-  return data || [];
+  const role = currentProfile?.role || 'member';
+  if (FULL_ACCESS_ROLES.includes(role)) {
+    // CEO/COO/Admin: see everything
+    const { data } = await supabase.from('projects').select('*, creator:created_by(full_name)').order('created_at', { ascending: false });
+    return data || [];
+  }
+  // Member/Viewer: only projects they created OR are a member of
+  const uid = currentUser?.id;
+  const [ownedRes, memberRes] = await Promise.all([
+    supabase.from('projects').select('*, creator:created_by(full_name)').eq('created_by', uid),
+    supabase.from('project_members').select('project_id').eq('user_id', uid),
+  ]);
+  const memberIds = (memberRes.data || []).map(r => r.project_id);
+  const owned = ownedRes.data || [];
+  if (!memberIds.length) return owned;
+  const { data: memberProjects } = await supabase.from('projects').select('*, creator:created_by(full_name)').in('id', memberIds);
+  // merge, deduplicate
+  const all = [...owned, ...(memberProjects || [])];
+  const seen = new Set();
+  return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; })
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
 export async function createProject(name, description) {
