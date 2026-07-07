@@ -7,10 +7,14 @@ import { currentProfile } from './auth.js';
 
 export const ROLES = [
   { id: 'ceo',    label: 'CEO',    desc: 'Full access to everything, including granting any role' },
+  { id: 'coo',    label: 'COO',    desc: 'Same access as CEO' },
   { id: 'admin',  label: 'Admin',  desc: 'Full access; manages Member/Viewer permissions' },
-  { id: 'member', label: 'Member', desc: 'Access per module, set by CEO/Admin' },
-  { id: 'viewer', label: 'Viewer', desc: 'Read-only access per module' },
+  { id: 'member', label: 'Member', desc: 'Access per page, set by leadership' },
+  { id: 'viewer', label: 'Viewer', desc: 'Read-only access per page' },
 ];
+
+// CEO and COO are the equal top tier
+const OWNER_ROLES = ['ceo', 'coo'];
 
 export const MODULES = [
   { id: 'dashboard',  label: 'Dashboard' },
@@ -24,10 +28,10 @@ export const MODULES = [
 ];
 
 export const LEVELS = [
-  { id: 'none', label: 'None' },
-  { id: 'view', label: 'View' },
-  { id: 'edit', label: 'Edit' },
-  { id: 'full', label: 'Full' },
+  { id: 'none', label: 'Hidden' },
+  { id: 'view', label: 'View only' },
+  { id: 'edit', label: 'Can edit' },
+  { id: 'full', label: 'Full control' },
 ];
 
 const ORDER = { none: 0, view: 1, edit: 2, full: 3 };
@@ -42,13 +46,13 @@ function profile() {
 
 export function roleOf(p = profile()) { return p?.role || 'member'; }
 
-// CEO + Admin can manage other people's access
-export function isElevated(p = profile()) { return ['ceo', 'admin'].includes(roleOf(p)); }
-export function isCeo(p = profile()) { return roleOf(p) === 'ceo'; }
+// CEO/COO + Admin can manage other people's access
+export function isElevated(p = profile()) { return [...OWNER_ROLES, 'admin'].includes(roleOf(p)); }
+export function isCeo(p = profile()) { return OWNER_ROLES.includes(roleOf(p)); }
 
 // Which roles can this manager assign to others?
 export function assignableRoles(p = profile()) {
-  if (isCeo(p)) return ROLES;                                  // CEO grants anything
+  if (isCeo(p)) return ROLES;                                  // CEO/COO grant anything
   if (roleOf(p) === 'admin') return ROLES.filter(r => ['member', 'viewer'].includes(r.id));
   return [];
 }
@@ -57,7 +61,7 @@ export function assignableRoles(p = profile()) {
 export function canManageMember(target, p = profile()) {
   if (!target || target.id === p?.id) return false;            // never your own
   if (isCeo(p)) return true;
-  if (roleOf(p) === 'admin') return !['ceo', 'admin'].includes(target.role);
+  if (roleOf(p) === 'admin') return ![...OWNER_ROLES, 'admin'].includes(target.role);
   return false;
 }
 

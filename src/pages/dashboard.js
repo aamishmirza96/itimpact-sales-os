@@ -13,7 +13,7 @@ import { ROLES, MODULES, LEVELS, isElevated, isCeo, assignableRoles, canManageMe
 const CEO_CODE = '123456';
 let ceoUnlocked = false;
 
-const ROLE_COLORS = { ceo: 'var(--accent)', admin: 'var(--blue)', member: 'var(--green)', viewer: 'var(--text-3)' };
+const ROLE_COLORS = { ceo: 'var(--accent)', coo: 'var(--accent)', admin: 'var(--blue)', member: 'var(--green)', viewer: 'var(--text-3)' };
 
 function canManageTeam() { return isElevated() || ceoUnlocked; }
 
@@ -38,7 +38,7 @@ function renderTeam() {
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
     ${state.team.map(m => {
       const statusColor = m.status==='active' ? 'var(--green)' : m.status==='away' ? 'var(--amber)' : 'var(--text-3)';
-      const role = ROLES.find(r => r.id === m.role) || ROLES[2];
+      const role = ROLES.find(r => r.id === m.role) || ROLES.find(r => r.id === 'member');
       const rc = ROLE_COLORS[role.id] || 'var(--green)';
       const canEditAccess = manage && (canManageMember(m) || (ceoUnlocked && m.id !== currentUser?.id));
       return `
@@ -84,7 +84,7 @@ function renderAccessModal() {
       <div class="modal-header">
         <div>
           <div class="modal-title">🔑 Access & Role — ${escHtml(m.full_name || m.email)}</div>
-          <div class="modal-sub">CEO and Admin always have full access; Members and Viewers get per-module levels.</div>
+          <div class="modal-sub">CEO, COO and Admin always have full access. For Members and Viewers, choose what each page shows — "Hidden" removes the page from their sidebar entirely.</div>
         </div>
         <button class="modal-close" id="access-modal-close">✕</button>
       </div>
@@ -99,7 +99,7 @@ function renderAccessModal() {
           </select>
         </div>
         <div id="access-matrix" style="${showMatrix ? '' : 'display:none'}">
-          <label class="form-label" style="display:block;margin-bottom:8px">Module access</label>
+          <label class="form-label" style="display:block;margin-bottom:8px">Page access — pick what this person can see and do on each page</label>
           <div class="access-grid">
             <div class="access-grid-head">Module</div>
             ${LEVELS.map(l => `<div class="access-grid-head" style="text-align:center">${l.label}</div>`).join('')}
@@ -113,7 +113,7 @@ function renderAccessModal() {
                 </label>`).join('')}`;
             }).join('')}
           </div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:8px">None hides the area · View is read-only · Edit allows changes · Full allows delete/manage</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px">Hidden = page removed from their sidebar · View only = can look but not change · Can edit = normal work · Full control = can also delete/manage</div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
           <button type="button" class="btn-ghost" id="access-cancel">Cancel</button>
@@ -225,8 +225,7 @@ function renderAddMemberModal() {
 
 function renderHome() {
   const now = new Date();
-  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
-  const name = currentProfile?.full_name?.split(' ')[0] || 'there';
+  const name = currentProfile?.full_name?.split(' ')[0] || '';
   const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
   // Lead stats
@@ -294,8 +293,8 @@ function renderHome() {
     <!-- Greeting bar -->
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
-        <div style="font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">${greeting}, ${name}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}</div>
+        <div style="font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.5px">Welcome to ITImpact</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:3px">${dateStr}${name ? ' · signed in as ' + name : ''}</div>
       </div>
       ${pendingPosts > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.07);cursor:pointer" data-nav="social-planner">
         <span style="font-size:13px;color:#f59e0b;font-weight:700">${pendingPosts} post${pendingPosts>1?'s':''} awaiting approval</span>
@@ -310,56 +309,56 @@ function renderHome() {
     <!-- KPI grid: 4 across -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total leads</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Sales — total leads</div>
         <div style="font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px;line-height:1">${totalLeads}</div>
         <div style="font-size:11px;color:var(--text-3);margin-top:6px">${newLeads} new · ${qualifiedLeads} qualified</div>
       </div>
       <div class="home-kpi-card" data-nav="leads">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pipeline value</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Sales — potential deal value</div>
         <div style="font-weight:800;font-size:32px;color:#10b981;letter-spacing:-1px;line-height:1">${fmt$(totalValue)}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${fmt$(wonValue)} won</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${fmt$(wonValue)} already won</div>
       </div>
       <div class="home-kpi-card" data-nav="projects">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Active projects</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Projects in progress</div>
         <div style="font-weight:800;font-size:32px;color:#f59e0b;letter-spacing:-1px;line-height:1">${activeProjects}</div>
         <div style="font-size:11px;color:var(--text-3);margin-top:6px">${completedProjects} completed</div>
       </div>
       <div class="home-kpi-card" data-nav="job-apps">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New applications</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Recruiting — new job applicants</div>
         <div style="font-weight:800;font-size:32px;color:#8b5cf6;letter-spacing:-1px;line-height:1">${newJobApps+newCVs}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${totalCandidates} total candidates</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${totalCandidates} candidates on file</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
       <div class="home-kpi-card" data-nav="social-planner">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Published posts</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Social media — posts published</div>
         <div style="font-weight:800;font-size:32px;color:#06b6d4;letter-spacing:-1px;line-height:1">${publishedPosts}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${pendingPosts} pending · ${approvedPosts} approved</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${pendingPosts} awaiting approval · ${approvedPosts} approved</div>
       </div>
       <div class="home-kpi-card" data-nav="team">
         <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Team members</div>
         <div style="font-weight:800;font-size:32px;color:#ec4899;letter-spacing:-1px;line-height:1">${state.team.length}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">active users</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">people with dashboard access</div>
       </div>
       <div class="home-kpi-card" data-nav="tasks">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">My open tasks</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tasks assigned to me</div>
         <div style="font-weight:800;font-size:32px;color:${overdueTasks>0?'#ef4444':'#22c55e'};letter-spacing:-1px;line-height:1">${myOpenTasks}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' total to do'}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${overdueTasks>0?`<span style="color:#ef4444">${overdueTasks} overdue</span>`:todoTasks+' open across the team'}</div>
       </div>
       <div class="home-kpi-card" data-nav="contact-subs">
-        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">New enquiries</div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Website — new enquiries</div>
         <div style="font-weight:800;font-size:32px;color:#f97316;letter-spacing:-1px;line-height:1">${state.contactSubmissions.filter(c=>c.status==='new').length}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${state.contactSubmissions.length} total</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">${state.contactSubmissions.length} total received</div>
       </div>
     </div>
 
     <!-- Bottom: pipeline + activity + sidebar -->
     <div style="display:grid;grid-template-columns:1fr 1fr 280px;gap:16px">
 
-      <!-- Pipeline bars -->
+      <!-- Leads by status bars -->
       <div class="home-card">
         <div class="home-card-header">
-          <div class="home-card-title">Lead pipeline</div>
+          <div class="home-card-title">Sales leads by status</div>
           <button class="home-card-link" data-nav="leads">View all →</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
@@ -427,12 +426,12 @@ function renderHome() {
           <div class="home-card-header"><div class="home-card-title">Quick actions</div></div>
           <div style="display:flex;flex-direction:column;gap:6px">
             ${[
-              {icon:'⚡',label:'Add new lead',nav:'leads'},
-              {icon:'✓', label:'Assign a task',nav:'tasks'},
-              {icon:'📄',label:'Upload a CV',nav:'general-cvs'},
-              {icon:'📋',label:'Social planner',nav:'social-planner'},
-              {icon:'📝',label:'Write article (AI)',nav:'articles'},
-              {icon:'🤖',label:'Ask Jarvis',nav:'agents'},
+              {icon:'⚡',label:'Add a new sales lead',nav:'leads'},
+              {icon:'✓', label:'Assign a task to someone',nav:'tasks'},
+              {icon:'📄',label:'Upload a CV (recruiting)',nav:'general-cvs'},
+              {icon:'📋',label:'Plan a social media post',nav:'social-planner'},
+              {icon:'📝',label:'Write an article with AI',nav:'articles'},
+              {icon:'🤖',label:'Ask Jarvis (AI assistant)',nav:'agents'},
             ].map(a=>`
             <div data-nav="${a.nav}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-1);cursor:pointer;transition:border-color 0.15s">
               <span style="font-size:14px">${a.icon}</span>

@@ -161,8 +161,8 @@ function renderPipeline() {
   return `
   <div class="page-header pipe-header">
     <div>
-      <div class="page-title">Pipeline</div>
-      <div class="page-sub">${prospects.length} prospects · ${priorityCount} priority · ${spokenTo} spoken to · ${meetings} meetings</div>
+      <div class="page-title">Apollo Prospects</div>
+      <div class="page-sub">Potential clients found via Apollo — drag cards between stages as outreach progresses · ${prospects.length} prospects · ${priorityCount} priority · ${meetings} meetings booked</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center">
       <div class="view-switch">

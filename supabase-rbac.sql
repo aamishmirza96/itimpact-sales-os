@@ -5,14 +5,14 @@
 -- {"sales":"edit","recruiting":"view","reports":"none"}
 alter table profiles add column if not exists permissions jsonb default '{}';
 
--- Roles: ceo | admin | member | viewer (profiles.role already exists)
--- Bootstrap: make the owner accounts CEO. Edit the email list as needed.
-update profiles set role = 'ceo'
-where email in (
-  'amishmirza@itimpactconsulting.us',
-  'aamishmirza96@gmail.com',
-  'digitalsalesai0@gmail.com'
-);
+-- Roles: ceo | coo | admin | member | viewer (ceo and coo are equal top tier)
+-- Abu Bakar — CEO
+update profiles set role = 'ceo' where email = 'abu@itimpactconsulting.us';
+-- Ali Faruqi — COO (same access as CEO)
+update profiles set role = 'coo' where email = 'ali@itimpactconsulting.us';
+-- Aamish Mirza — Admin (complete access; assigns access for the rest of the team)
+update profiles set role = 'admin'
+where email in ('amishmirza@itimpactconsulting.us', 'aamishmirza96@gmail.com');
 
 -- NOTE: this enables in-app access control. For hard database-level
 -- enforcement, RLS policies keyed on profiles.role should be added per
