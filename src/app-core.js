@@ -32,6 +32,7 @@ const prospects = [
       spokenTo: s.spokenTo || false,
       meetingBooked: s.meetingBooked || false,
       meetingDate: s.meetingDate || null,
+      stageChangedAt: s.stageChangedAt || null, // set on stage moves (kanban/stage nav) for days-in-stage
     };
   }),
   ...addedFromSearch,
@@ -60,6 +61,10 @@ const state = {
   stageFilter: -1,
   sectorFilter: 'All',
   sort: 'priority',
+  sortDir: 'asc',
+  pipelineView: 'board', // 'board' (kanban) | 'table'
+  leadPanel: null,       // lead id shown in the right slide-over
+  candidatePanel: null,  // candidate id shown in the right slide-over
   expandedId: null,
   modal: null,       // 'findLeads' | 'email'
   modalData: null,
@@ -150,11 +155,15 @@ const state = {
   persisted: loadSaved(),
 };
 
+// Dev-only hook so tests can inspect/seed state from the console
+if (import.meta.env.DEV) window.__salesOsState = state;
+
 function persistProspect(p) {
   state.persisted[p.id] = {
     stage: p.stage, notes: p.notes,
     researchDone: p.researchDone, outreachWritten: p.outreachWritten,
     spokenTo: p.spokenTo, meetingBooked: p.meetingBooked, meetingDate: p.meetingDate,
+    stageChangedAt: p.stageChangedAt || null,
   };
   localStorage.setItem(LS_KEY, JSON.stringify(state.persisted));
   syncProspect(p); // sync to Supabase in background
@@ -180,6 +189,9 @@ function filteredSorted() {
   else if (state.sort === 'bant') list.sort((a,b) => bantScore(b.bant)-bantScore(a.bant));
   else if (state.sort === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
   else if (state.sort === 'stage') list.sort((a,b) => a.stage-b.stage);
+  else if (state.sort === 'company') list.sort((a,b) => a.company.localeCompare(b.company));
+  else if (state.sort === 'sector') list.sort((a,b) => a.sector.localeCompare(b.sector));
+  if (state.sortDir === 'desc') list.reverse();
   return list;
 }
 

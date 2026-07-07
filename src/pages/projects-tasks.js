@@ -593,4 +593,4 @@ function scrollChatToBottom() {
 }
 
 
-export { renderProjects, renderTasksView, renderTaskModal, attachProjectEvents, attachTaskEvents, attachTaskModalEvents };
+export { renderProjects, renderTasksView, renderTaskModal, attachProjectEvents, attachTaskEvents, attachTaskModalEvents, openProject };

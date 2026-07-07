@@ -25,16 +25,17 @@ import {
 import { renderHome, renderTeam, attachTeamEvents } from './pages/dashboard.js';
 import {
   renderPipeline, renderLeads, renderICP, renderDisqualify, renderOutreach,
-  renderModal, renderLeadModal, attachSalesEvents, attachLeadEvents, attachLeadModalEvents,
+  renderModal, renderLeadModal, renderLeadPanel,
+  attachSalesEvents, attachLeadEvents, attachLeadModalEvents, attachLeadPanelEvents,
 } from './pages/sales.js';
 import {
   renderRecruiting, renderGeneralCVs, renderJobApplications, renderAIAssessments,
-  renderFilesView, attachRecruitingEvents,
+  renderFilesView, attachRecruitingEvents, renderCandidatePanel, attachCandidatePanelEvents,
 } from './pages/recruiting.js';
 import { attachSubmissionEvents } from './pages/submissions-shared.js';
 import {
   renderProjects, renderTasksView, renderTaskModal,
-  attachProjectEvents, attachTaskEvents, attachTaskModalEvents,
+  attachProjectEvents, attachTaskEvents, attachTaskModalEvents, openProject,
 } from './pages/projects-tasks.js';
 import {
   renderSocialPlanner, renderSocialPostModal, renderArticlesView, renderArticleModal,
@@ -430,10 +431,115 @@ function render() {
     if (el.querySelector('style')) document.body.appendChild(el.querySelector('style'));
     attachNotifEvents();
   }
+  // Record slide-overs (Phase 3)
+  document.getElementById('lead-panel')?.remove();
+  if (state.leadPanel) {
+    const el = document.createElement('div');
+    el.innerHTML = renderLeadPanel();
+    if (el.firstElementChild) {
+      document.body.appendChild(el.firstElementChild);
+      attachLeadPanelEvents();
+    }
+  }
+  document.getElementById('candidate-panel')?.remove();
+  if (state.candidatePanel) {
+    const el = document.createElement('div');
+    el.innerHTML = renderCandidatePanel();
+    if (el.firstElementChild) {
+      document.body.appendChild(el.firstElementChild);
+      attachCandidatePanelEvents();
+    }
+  }
 }
+
+// ── Global search (Phase 3) ───────────────────────────────────────────
+// Searches leads, candidates, projects and website submissions in memory;
+// grouped dropdown; Enter/click opens the record. "/" focuses the input.
+function searchAll(q) {
+  const needle = q.toLowerCase();
+  const hit = (...fields) => fields.some(f => (f || '').toLowerCase().includes(needle));
+  const groups = [];
+  const leads = state.leads.filter(l => hit(l.name, l.company, l.email)).slice(0, 5)
+    .map(l => ({ label: l.name, sub: l.company || l.email || 'Lead', action: () => openLeadRecord(l.id) }));
+  const cands = candidates.filter(c => hit(c.name, c.currentRole, c.currentCompany)).slice(0, 5)
+    .map(c => ({ label: c.name, sub: `${c.currentRole} · ${c.currentCompany}`, action: () => openCandidateRecord(c.id) }));
+  const projs = state.projects.filter(p => hit(p.name, p.description)).slice(0, 5)
+    .map(p => ({ label: p.name, sub: p.description || 'Project', action: () => openProjectRecord(p.id) }));
+  const subs = [
+    ...state.contactSubmissions.map(s => ({ s, view: 'contact-subs', prefix: 'contact-', kind: 'Contact enquiry' })),
+    ...state.generalCVs.map(s => ({ s, view: 'general-cvs', prefix: 'cv-', kind: 'General CV' })),
+    ...state.jobApplications.map(s => ({ s, view: 'job-apps', prefix: 'job-', kind: s.position_title ? `Applied · ${s.position_title}` : 'Job application' })),
+  ].filter(x => hit(x.s.full_name, x.s.email, x.s.company)).slice(0, 5)
+    .map(x => ({ label: x.s.full_name, sub: x.kind, action: () => openSubmissionRecord(x.view, x.prefix + x.s.id) }));
+  if (leads.length) groups.push({ group: 'Leads', items: leads });
+  if (cands.length) groups.push({ group: 'Candidates', items: cands });
+  if (projs.length) groups.push({ group: 'Projects', items: projs });
+  if (subs.length) groups.push({ group: 'Submissions', items: subs });
+  return groups;
+}
+
+async function openLeadRecord(id) { await navigate('leads'); state.leadPanel = id; render(); }
+async function openCandidateRecord(id) { await navigate('recruiting', { set: () => { state.recTab = 'candidates'; } }); state.candidatePanel = id; render(); }
+async function openProjectRecord(id) { await navigate('projects'); const p = state.projects.find(x => x.id === id); if (p) await openProject(p); }
+async function openSubmissionRecord(view, expandedId) { await navigate(view); state.expandedSubmission = expandedId; render(); }
+
+function attachGlobalSearch() {
+  const gs = document.getElementById('global-search');
+  const gsResults = document.getElementById('global-search-results');
+  if (!gs || !gsResults) return;
+  let currentGroups = [];
+  const closeResults = () => { gsResults.style.display = 'none'; gsResults.innerHTML = ''; currentGroups = []; };
+  const pick = (item) => { closeResults(); gs.value = ''; gs.blur(); item.action(); };
+  gs.addEventListener('input', () => {
+    const q = gs.value.trim();
+    if (q.length < 2) { closeResults(); return; }
+    currentGroups = searchAll(q);
+    if (!currentGroups.length) {
+      gsResults.innerHTML = '<div class="search-empty">No matches</div>';
+      gsResults.style.display = 'block';
+      return;
+    }
+    gsResults.innerHTML = currentGroups.map((g, gi) => `
+      <div class="search-group">
+        <div class="search-group-label">${g.group}</div>
+        ${g.items.map((it, ii) => `
+          <div class="search-item" data-gs="${gi}:${ii}">
+            <span class="search-item-label">${escHtml(it.label)}</span>
+            <span class="search-item-sub">${escHtml(it.sub)}</span>
+          </div>`).join('')}
+      </div>`).join('');
+    gsResults.style.display = 'block';
+    gsResults.querySelectorAll('[data-gs]').forEach(el => {
+      // mousedown so the pick lands before the input's blur handler
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const [gi, ii] = el.dataset.gs.split(':').map(Number);
+        pick(currentGroups[gi].items[ii]);
+      });
+    });
+  });
+  gs.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const first = currentGroups[0]?.items[0];
+      if (first) pick(first);
+    } else if (e.key === 'Escape') { closeResults(); gs.blur(); }
+  });
+  gs.addEventListener('blur', () => setTimeout(closeResults, 150));
+}
+
+// "/" focuses global search from anywhere (registered once)
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    const gs = document.getElementById('global-search');
+    if (gs) { e.preventDefault(); gs.focus(); }
+  }
+});
 
 // ── Shell events ──────────────────────────────────────────────────────
 function attachEvents() {
+  attachGlobalSearch();
   // Sign out (sidebar + user menu)
   const doSignOut = async () => {
     await signOut();

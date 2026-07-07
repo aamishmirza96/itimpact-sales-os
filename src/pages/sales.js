@@ -155,13 +155,21 @@ function renderPipeline() {
   const outreachWritten = prospects.filter(p=>p.outreachWritten).length;
   const total = prospects.length || 1;
 
+  const isBoard = state.pipelineView !== 'table';
+
   return `
   <div class="page-header pipe-header">
     <div>
       <div class="page-title">Pipeline</div>
       <div class="page-sub">${prospects.length} prospects · ${priorityCount} priority · ${spokenTo} spoken to · ${meetings} meetings</div>
     </div>
-    <button class="find-leads-btn" id="btn-find-leads">⚡ Find More Leads</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="view-switch">
+        <button class="view-switch-btn ${isBoard?'active':''}" data-pipe-view="board">Board</button>
+        <button class="view-switch-btn ${!isBoard?'active':''}" data-pipe-view="table">Table</button>
+      </div>
+      <button class="find-leads-btn" id="btn-find-leads">⚡ Find More Leads</button>
+    </div>
   </div>
 
   <div class="metrics-row">
@@ -201,15 +209,95 @@ function renderPipeline() {
     </select>
   </div>
 
+  ${isBoard ? renderPipelineBoard(list) : `
   <table class="prospect-table">
     <thead><tr>
-      <th>Prospect</th><th>Company</th><th>Sector</th><th>Stage</th>
-      <th>BANT</th><th>Status</th><th>Actions</th><th></th>
+      ${[['name','Prospect'],['company','Company'],['sector','Sector'],['stage','Stage'],['bant','BANT']].map(([col,label]) => `
+        <th class="th-sortable ${state.sort===col?'sorted':''}" data-sort-col="${col}">${label}${state.sort===col ? (state.sortDir==='desc'?' ↓':' ↑') : ''}</th>`).join('')}
+      <th>Status</th><th>Actions</th><th></th>
     </tr></thead>
     <tbody id="prospect-tbody">
       ${list.map(p=>renderProspectRows(p)).join('')}
     </tbody>
-  </table>`;
+  </table>`}`;
+}
+
+// ── Pipeline kanban board (Phase 3) ───────────────────────────────────
+function daysInStage(p) {
+  if (!p.stageChangedAt) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(p.stageChangedAt).getTime()) / 86400000));
+}
+
+function renderPipelineBoard(list) {
+  return `
+  <div class="kanban">
+    ${STAGES.map((label, i) => {
+      const cards = list.filter(p => p.stage === i);
+      return `
+      <div class="kanban-col">
+        <div class="kanban-col-head">
+          <span class="kanban-col-title">${label}</span>
+          <span class="kanban-col-count">${cards.length}</span>
+        </div>
+        <div class="kanban-col-body" data-kb-drop="${i}">
+          ${cards.map(p => {
+            const d = daysInStage(p);
+            return `
+            <div class="kanban-card ${p.priority?'priority':''}" draggable="true" data-kb-card="${p.id}" title="Drag to move stage · click for outreach">
+              <div class="kanban-card-top">
+                <div class="avatar" style="width:26px;height:26px;font-size:9px;border-radius:6px">${p.initials}</div>
+                <div class="kanban-card-name">${escHtml(p.name)}${p.priority?' <span class="star">★</span>':''}</div>
+              </div>
+              <div class="kanban-card-company">${escHtml(p.company)} ${sourceBadge(p.source)}</div>
+              ${p.title ? `<div class="kanban-card-title">${escHtml(p.title)}</div>` : ''}
+              <div class="kanban-card-foot">
+                <span class="kanban-bant">BANT ${bantScore(p.bant)}</span>
+                ${p.meetingBooked ? '<span class="mini-badge meeting">📅</span>' : p.spokenTo ? '<span class="mini-badge spoken">📞</span>' : ''}
+                ${d != null ? `<span class="kanban-days">${d}d in stage</span>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+          ${cards.length === 0 ? '<div class="kanban-empty">No prospects</div>' : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function attachPipelineBoardEvents() {
+  document.querySelectorAll('[data-kb-card]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', card.dataset.kbCard);
+      e.dataTransfer.effectAllowed = 'move';
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    // Click (not drag) opens the outreach/email modal for the prospect
+    card.addEventListener('click', () => {
+      const rawId = card.dataset.kbCard;
+      state.modal = 'email';
+      state.modalData = isNaN(rawId) ? rawId : parseInt(rawId);
+      renderModal();
+    });
+  });
+  document.querySelectorAll('[data-kb-drop]').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const rawId = e.dataTransfer.getData('text/plain');
+      const id = isNaN(rawId) ? rawId : parseInt(rawId);
+      const p = prospects.find(x => x.id === id);
+      const newStage = parseInt(zone.dataset.kbDrop);
+      if (!p || p.stage === newStage) return;
+      p.stage = newStage;
+      p.stageChangedAt = new Date().toISOString();
+      persistProspect(p); // existing update path → localStorage + Supabase
+      showToast(`${p.name} → ${STAGES[newStage]}`);
+      app.render();
+    });
+  });
 }
 
 function renderProspectRows(p) {
@@ -551,7 +639,24 @@ export function attachSalesEvents() {
   });
   // Sort
   const ss = document.querySelector('.sort-select');
-  if (ss) ss.addEventListener('change', e => { state.sort=e.target.value; app.render(); });
+  if (ss) ss.addEventListener('change', e => { state.sort=e.target.value; state.sortDir='asc'; app.render(); });
+
+  // Board/Table switcher
+  document.querySelectorAll('[data-pipe-view]').forEach(el => {
+    el.addEventListener('click', () => { state.pipelineView = el.dataset.pipeView; state.expandedId = null; app.render(); });
+  });
+
+  // Column-header sorting (table view)
+  document.querySelectorAll('[data-sort-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sortCol;
+      if (state.sort === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sort = col; state.sortDir = 'asc'; }
+      app.render();
+    });
+  });
+
+  attachPipelineBoardEvents();
 
   // Search bar
   const searchInput = document.getElementById('pipeline-search');
@@ -559,7 +664,9 @@ export function attachSalesEvents() {
     searchInput.addEventListener('input', e => {
       state.searchQuery = e.target.value;
       state.expandedId = null;
-      refreshTbody();
+      // board mode has no tbody — re-render the whole view (focus is restored below)
+      if (state.pipelineView !== 'table') app.render();
+      else refreshTbody();
     });
     searchInput.focus();
     searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
@@ -641,7 +748,7 @@ function attachExpandedEvents() {
       const p = prospects.find(x=>x.id===id);
       if (!p) return;
       const newStage = Math.max(0, Math.min(STAGES.length-1, p.stage + parseInt(btn.dataset.stageMove)));
-      if (newStage!==p.stage) { p.stage=newStage; persistProspect(p); showToast(`${p.name} → ${STAGES[newStage]}`); refreshTbody(); }
+      if (newStage!==p.stage) { p.stage=newStage; p.stageChangedAt=new Date().toISOString(); persistProspect(p); showToast(`${p.name} → ${STAGES[newStage]}`); refreshTbody(); }
     });
   });
   attachCopyButtons();
@@ -785,8 +892,9 @@ function attachLeadEvents() {
   document.querySelectorAll('[data-edit-lead]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('select')) return;
+      // Phase 3: row click opens the record slide-over instead of the edit modal
       const lead = state.leads.find(l => l.id === el.dataset.editLead);
-      if (lead) { state.leadModal = true; state.leadEditData = { ...lead }; app.render(); }
+      if (lead) { state.leadPanel = lead.id; app.render(); }
     });
   });
 }
@@ -828,9 +936,119 @@ function closeLeadModal() {
   app.render();
 }
 
+// ── Lead record slide-over (Phase 3) ──────────────────────────────────
+// Right-side panel: inline-editable properties (existing updateLead logic),
+// activity timeline, related tasks. Close with X or Esc.
+function renderLeadPanel() {
+  const l = state.leads.find(x => x.id === state.leadPanel);
+  if (!l) return '';
+  const st = LEAD_STATUSES.find(s => s.id === l.status) || LEAD_STATUSES[0];
+  const tasks = state.tasks.filter(t => t.entity_type === 'leads' && t.entity_id === String(l.id));
+  const field = (label, name, value, type = 'text') => `
+    <div class="lp-row">
+      <label class="lp-label">${label}</label>
+      <input class="lp-input" type="${type}" data-lp-field="${name}" value="${escHtml(value ?? '')}" />
+    </div>`;
+  return `
+  <div class="slideover" id="lead-panel">
+    <div class="slideover-head">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <div class="rec-cand-avatar" style="width:38px;height:38px;font-size:12px;background:linear-gradient(135deg,${st.color},${st.color}cc)">${(l.name||'?')[0].toUpperCase()}</div>
+        <div style="min-width:0">
+          <div class="slideover-title">${escHtml(l.name)}</div>
+          <div class="slideover-sub">${escHtml(l.company || 'No company')} · <span style="color:${st.color}">${st.label}</span></div>
+        </div>
+      </div>
+      <button class="modal-close" id="lead-panel-close">✕</button>
+    </div>
+    <div class="slideover-body">
+      <div class="slideover-section-title">Properties</div>
+      ${field('Name', 'name', l.name)}
+      ${field('Company', 'company', l.company)}
+      ${field('Email', 'email', l.email, 'email')}
+      ${field('Phone', 'phone', l.phone)}
+      ${field('Value ($)', 'value', l.value || 0, 'number')}
+      ${field('Source', 'source', l.source)}
+      <div class="lp-row">
+        <label class="lp-label">Status</label>
+        <select class="lp-input" data-lp-field="status">
+          ${LEAD_STATUSES.map(s => `<option value="${s.id}" ${l.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="lp-row">
+        <label class="lp-label">Assigned to</label>
+        <select class="lp-input" data-lp-field="assigned_to">
+          <option value="">Unassigned</option>
+          ${state.team.map(m => `<option value="${m.id}" ${l.assigned_to===m.id?'selected':''}>${m.full_name||m.email}</option>`).join('')}
+        </select>
+      </div>
+      <div class="lp-row">
+        <label class="lp-label">Notes</label>
+        <textarea class="lp-input" rows="4" data-lp-field="notes">${escHtml(l.notes || '')}</textarea>
+      </div>
+
+      <div class="slideover-section-title">Activity</div>
+      <div class="lp-timeline">
+        <div class="lp-timeline-item"><span class="lp-timeline-dot"></span>Created ${new Date(l.created_at).toLocaleString()} ${l.creator?.full_name ? 'by ' + escHtml(l.creator.full_name) : ''}</div>
+        ${l.updated_at ? `<div class="lp-timeline-item"><span class="lp-timeline-dot"></span>Last updated ${new Date(l.updated_at).toLocaleString()}</div>` : ''}
+        ${l.due_date ? `<div class="lp-timeline-item"><span class="lp-timeline-dot" style="background:var(--amber)"></span>Due ${new Date(l.due_date).toLocaleDateString()}</div>` : ''}
+      </div>
+
+      <div class="slideover-section-title">Tasks (${tasks.length})</div>
+      ${tasks.map(t => {
+        const sc = t.status==='completed'?'var(--green)':t.status==='in_progress'?'var(--blue)':'var(--amber)';
+        return `<div class="lp-task"><span class="lp-timeline-dot" style="background:${sc}"></span><span style="flex:1">${escHtml(t.title)}</span><span style="font-size:10px;color:var(--text-3)">${t.assignee?.full_name||''}</span></div>`;
+      }).join('')}
+      <button class="btn-ghost" id="lp-assign-task" style="margin-top:8px;font-size:11px">+ Assign Follow-up</button>
+    </div>
+    <div class="slideover-foot">
+      <button class="btn-danger-sm" id="lp-delete-lead">Delete Lead</button>
+    </div>
+  </div>`;
+}
+
+function attachLeadPanelEvents() {
+  const panel = document.getElementById('lead-panel');
+  if (!panel) return;
+  const lead = state.leads.find(x => x.id === state.leadPanel);
+  const close = () => { state.leadPanel = null; app.render(); };
+  document.getElementById('lead-panel-close')?.addEventListener('click', close);
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { document.removeEventListener('keydown', esc); if (state.leadPanel) close(); }
+  });
+  // Inline property edits persist via the existing updateLead logic
+  panel.querySelectorAll('[data-lp-field]').forEach(el => {
+    el.addEventListener('change', async () => {
+      const f = el.dataset.lpField;
+      let v = el.value;
+      if (f === 'value') v = parseFloat(v) || 0;
+      if (f === 'assigned_to' && !v) v = null;
+      try {
+        await updateLead(lead.id, { [f]: v });
+        state.leads = await fetchLeads();
+        showToast('Lead updated', 'success');
+        app.render();
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+  document.getElementById('lp-assign-task')?.addEventListener('click', () => {
+    state.taskModal = 'new';
+    state.taskEditData = null;
+    state.taskEntityContext = { entity_type: 'leads', entity_id: String(lead.id), entity_label: lead.name };
+    app.render();
+  });
+  document.getElementById('lp-delete-lead')?.addEventListener('click', async () => {
+    if (!confirm('Delete this lead?')) return;
+    await deleteLead(lead.id);
+    state.leads = await fetchLeads();
+    state.leadPanel = null;
+    showToast('Lead deleted', 'success');
+    app.render();
+  });
+}
 
 export {
   renderPipeline, renderLeads, renderICP, renderDisqualify, renderOutreach,
-  renderModal, renderLeadModal,
-  attachLeadEvents, attachLeadModalEvents,
+  renderModal, renderLeadModal, renderLeadPanel,
+  attachLeadEvents, attachLeadModalEvents, attachLeadPanelEvents,
 };

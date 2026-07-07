@@ -289,7 +289,7 @@ function renderCandidatesTab(activePos) {
         const st = statusCfg(c.status);
         const pos = positions.find(p=>p.id===c.positionId);
         return `
-        <div class="rec-cand-card">
+        <div class="rec-cand-card" data-open-candidate="${c.id}" style="cursor:pointer">
           <div class="rec-cand-avatar">${c.initials}</div>
           <div class="rec-cand-body">
             <div class="rec-cand-top">
@@ -431,7 +431,87 @@ export function attachRecruitingEvents() {
     });
   });
 
+  // Phase 3: card click (not on inline controls) opens the candidate slide-over
+  document.querySelectorAll('[data-open-candidate]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('button,textarea,select,a,input,label')) return;
+      state.candidatePanel = el.dataset.openCandidate;
+      app.render();
+    });
+  });
 }
 
+// ── Candidate record slide-over (Phase 3) ─────────────────────────────
+function renderCandidatePanel() {
+  const c = candidates.find(x => x.id === state.candidatePanel);
+  if (!c) return '';
+  const st = statusCfg(c.status);
+  const pos = positions.find(p => p.id === c.positionId);
+  return `
+  <div class="slideover" id="candidate-panel">
+    <div class="slideover-head">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <div class="rec-cand-avatar" style="width:38px;height:38px;font-size:12px">${c.initials}</div>
+        <div style="min-width:0">
+          <div class="slideover-title">${escHtml(c.name)}</div>
+          <div class="slideover-sub">${escHtml(c.currentRole)} · ${escHtml(c.currentCompany)}</div>
+        </div>
+      </div>
+      <button class="modal-close" id="candidate-panel-close">✕</button>
+    </div>
+    <div class="slideover-body">
+      <div class="slideover-section-title">Properties</div>
+      <div class="lp-row">
+        <label class="lp-label">Status</label>
+        <select class="lp-input" id="cp-status">
+          ${CANDIDATE_STATUSES.map(s => `<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="lp-row"><label class="lp-label">Position</label><div class="lp-static">${pos ? escHtml(pos.title) : '—'}</div></div>
+      <div class="lp-row"><label class="lp-label">Location</label><div class="lp-static">${escHtml(c.location || '—')}</div></div>
+      <div class="lp-row"><label class="lp-label">Email</label><div class="lp-static">${escHtml(c.email || '—')}</div></div>
+      <div class="lp-row">
+        <label class="lp-label">Email sent</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer">
+          <input type="checkbox" id="cp-email-sent" ${c.emailSent?'checked':''} style="accent-color:var(--accent)" /> Outreach email sent to candidate
+        </label>
+      </div>
+      <div class="lp-row">
+        <label class="lp-label">Notes</label>
+        <textarea class="lp-input" rows="4" id="cp-notes">${escHtml(c.notes || '')}</textarea>
+      </div>
 
-export { renderRecruiting, renderGeneralCVs, renderJobApplications, renderAIAssessments, renderFilesView };
+      <div class="slideover-section-title">Summary</div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.7">${escHtml(c.summary || '')}</div>
+      ${c.tags?.length ? `<div class="rec-cand-tags" style="margin-top:10px">${c.tags.map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
+
+      <div class="slideover-section-title">Related</div>
+      <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>
+      <span class="cand-status-pill" style="margin-left:8px;background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
+    </div>
+  </div>`;
+}
+
+function attachCandidatePanelEvents() {
+  const panel = document.getElementById('candidate-panel');
+  if (!panel) return;
+  const c = candidates.find(x => x.id === state.candidatePanel);
+  const close = () => { state.candidatePanel = null; app.render(); };
+  document.getElementById('candidate-panel-close')?.addEventListener('click', close);
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { document.removeEventListener('keydown', esc); if (state.candidatePanel) close(); }
+  });
+  document.getElementById('cp-status')?.addEventListener('change', (e) => {
+    c.status = e.target.value; persistCandidate(c);
+    showToast(`${c.name} → ${e.target.value}`); app.render();
+  });
+  document.getElementById('cp-email-sent')?.addEventListener('change', (e) => {
+    c.emailSent = e.target.checked; persistCandidate(c);
+    showToast(e.target.checked ? `✉ Email marked sent — ${c.name}` : `Email unmarked — ${c.name}`);
+  });
+  document.getElementById('cp-notes')?.addEventListener('input', (e) => {
+    c.notes = e.target.value; persistCandidate(c);
+  });
+}
+
+export { renderRecruiting, renderGeneralCVs, renderJobApplications, renderAIAssessments, renderFilesView, renderCandidatePanel, attachCandidatePanelEvents };
