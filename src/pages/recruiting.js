@@ -1,9 +1,26 @@
-// Recruiting page: Positions / Candidates / Talent Pool (static seed data)
+// Recruiting page: Positions / Candidates / Talent Pool
 // plus website-sourced Job Applications, General CVs, AI Assessments, Files.
 import { state, candidates, persistCandidate, escHtml, showToast, app } from '../app-core.js';
-import { positions, CANDIDATE_STATUSES } from '../recruiting.js';
+import { positions, CANDIDATE_STATUSES, createDbPosition, updateDbPosition, deleteDbPosition, createDbCandidate, updateDbCandidate, deleteDbCandidate, fetchDbPositions, fetchDbCandidates } from '../recruiting.js';
 import { submissionCard, CV_STATUSES, JOBAPP_STATUSES, AI_STATUSES } from './submissions-shared.js';
 import { can } from '../access.js';
+
+// Merge hardcoded + DB positions/candidates
+function allPositions() {
+  return state.dbPositions.length > 0 ? state.dbPositions : positions;
+}
+function allCandidates() {
+  // DB candidates use position_id (UUID); hardcoded use positionId (string key)
+  const dbC = state.dbCandidates.map(c => ({
+    ...c, positionId: c.position_id, currentRole: c.current_role,
+    currentCompany: c.current_company, emailSent: c.email_sent,
+    currentSalary: c.current_salary, desiredSalary: c.desired_salary,
+    driveUrl: c.drive_url, isDb: true,
+  }));
+  if (state.dbPositions.length > 0) return dbC;
+  // fallback: hardcoded candidates + db candidates
+  return [...candidates, ...dbC];
+}
 
 function renderGeneralCVs() {
   const items = state.generalCVs;
@@ -189,136 +206,157 @@ function renderFilesView() {
 
 // ── Recruiting View ───────────────────────────────────────────────────
 function statusCfg(id) { return CANDIDATE_STATUSES.find(s=>s.id===id) || CANDIDATE_STATUSES[0]; }
+const STATUS_COLORS = { Active:'#10b981', Paused:'#f59e0b', Closed:'#ef4444' };
 
 function renderRecruiting() {
-  // The old internal rec-tabs bar was replaced by the shell's page tab bar
-  // (Recruiting > Positions / Candidates / Talent Pool map onto state.recTab).
-  const activePos = state.recPosition || positions[0].id;
-
+  const pos = allPositions();
+  const cands = allCandidates();
+  const usingDb = state.dbPositions.length > 0;
   return `
   <div class="page-header">
     <div>
       <div class="page-title">Recruiting</div>
-      <div class="page-sub">${positions.filter(p=>p.status==='Active').length} active positions · ${candidates.length} candidates tracked</div>
+      <div class="page-sub">${pos.filter(p=>p.status==='Active').length} active positions · ${cands.length} candidates tracked</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      ${state.recTab==='positions' ? `<button class="btn-primary" id="btn-add-position">+ Add Position</button>` : ''}
+      ${state.recTab==='candidates' ? `<button class="btn-primary" id="btn-add-candidate">+ Add Candidate</button>` : ''}
+      ${state.recTab==='pool' ? `<button class="btn-primary" id="btn-add-candidate-pool">+ Add Candidate</button>` : ''}
     </div>
   </div>
-
+  ${!usingDb ? `<div style="background:#f59e0b1a;border:1px solid #f59e0b44;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px">
+    Run <strong>supabase-recruiting.sql</strong> in Supabase to enable add/delete/edit for positions and candidates.
+  </div>` : ''}
   ${state.recTab==='positions' ? renderPositionsTab() : ''}
-  ${state.recTab==='candidates' ? renderCandidatesTab(activePos) : ''}
-  ${state.recTab==='pool' ? renderTalentPoolTab() : ''}`;
+  ${state.recTab==='candidates' ? renderCandidatesTab() : ''}
+  ${state.recTab==='pool' ? renderTalentPoolTab() : ''}
+  ${state.positionModal ? renderPositionModal() : ''}
+  ${state.candidateModal ? renderCandidateModal() : ''}`;
 }
 
 function renderPositionsTab() {
+  const pos = allPositions();
+  const cands = allCandidates();
   return `
   <div class="rec-positions-grid">
-    ${positions.map(pos => {
-      const posCands = candidates.filter(c=>c.positionId===pos.id);
+    ${pos.map(p => {
+      const posCands = cands.filter(c=>c.positionId===p.id || c.position_id===p.id);
       const shortlisted = posCands.filter(c=>c.status==='shortlisted').length;
-      const emailSent = posCands.filter(c=>c.emailSent).length;
-      const isExpanded = state.recExpandedCandidate === pos.id;
+      const emailSent = posCands.filter(c=>c.emailSent||c.email_sent).length;
+      const isExpanded = state.recExpandedCandidate === p.id;
+      const statusColor = STATUS_COLORS[p.status] || '#10b981';
+      const driveUrl = p.driveUrl || p.drive_url || '';
       return `
-      <div class="rec-pos-card ${pos.priority?'priority-pos':''}">
-        <div class="rec-pos-header" data-expand-pos="${pos.id}">
+      <div class="rec-pos-card ${p.priority?'priority-pos':''}">
+        <div class="rec-pos-header" data-expand-pos="${p.id}">
           <div class="rec-pos-left">
-            <div class="rec-pos-title">${pos.title}</div>
-            <div class="rec-pos-meta">${pos.location} · ${pos.comp}</div>
+            <div class="rec-pos-title">${escHtml(p.title)}</div>
+            <div class="rec-pos-meta">${escHtml(p.location||'')}${p.comp?' · '+escHtml(p.comp):''}</div>
           </div>
           <div class="rec-pos-badges">
-            <span class="rec-pos-badge active">● Active</span>
+            <select class="pos-status-select" data-pos-status="${p.id}" style="font-size:10px;padding:3px 8px;border-radius:12px;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;cursor:pointer" onclick="event.stopPropagation()">
+              <option value="Active" ${p.status==='Active'?'selected':''}>● Active</option>
+              <option value="Paused" ${p.status==='Paused'?'selected':''}>⏸ Paused</option>
+              <option value="Closed" ${p.status==='Closed'?'selected':''}>✕ Closed</option>
+            </select>
             <span class="rec-pos-stat">${posCands.length} CVs</span>
             <span class="rec-pos-stat green">${shortlisted} shortlisted</span>
             <span class="rec-pos-stat indigo">${emailSent} emailed</span>
+            ${p.isDb || state.dbPositions.length > 0 ? `<button class="btn-danger-sm" data-delete-pos="${p.id}" onclick="event.stopPropagation()" style="font-size:10px;padding:3px 8px">🗑</button>` : ''}
+            ${p.isDb || state.dbPositions.length > 0 ? `<button class="btn-ghost" style="font-size:10px;padding:3px 8px" data-edit-pos="${p.id}" onclick="event.stopPropagation()">Edit</button>` : ''}
             <span class="rec-chevron ${isExpanded?'open':''}">▾</span>
           </div>
         </div>
         ${isExpanded ? `
         <div class="rec-pos-body">
-          <div class="rec-pos-section-title">About</div>
-          <div class="rec-pos-text">${pos.about}</div>
+          ${p.about||p.summary ? `<div class="rec-pos-section-title">About</div><div class="rec-pos-text">${escHtml(p.about||p.summary||'')}</div>` : ''}
+          ${((p.responsibilities||[]).length || (p.requirements||[]).length) ? `
           <div class="rec-two-col" style="margin-top:14px">
-            <div>
-              <div class="rec-pos-section-title">Key Responsibilities</div>
-              <ul class="rec-list">${pos.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul>
-            </div>
-            <div>
-              <div class="rec-pos-section-title">Requirements</div>
-              <ul class="rec-list">${pos.requirements.map(r=>`<li>${r}</li>`).join('')}</ul>
-            </div>
-          </div>
+            ${(p.responsibilities||[]).length ? `<div><div class="rec-pos-section-title">Key Responsibilities</div><ul class="rec-list">${(p.responsibilities||[]).map(r=>`<li>${escHtml(r)}</li>`).join('')}</ul></div>` : ''}
+            ${(p.requirements||[]).length ? `<div><div class="rec-pos-section-title">Requirements</div><ul class="rec-list">${(p.requirements||[]).map(r=>`<li>${escHtml(r)}</li>`).join('')}</ul></div>` : ''}
+          </div>` : ''}
           <div class="rec-pos-footer">
-            <a href="${pos.driveUrl}" target="_blank" class="rec-drive-link">📁 Open in Google Drive →</a>
-            <button class="rec-view-cands-btn" data-viewcands="${pos.id}">View ${posCands.length} Candidates →</button>
+            ${driveUrl ? `<a href="${driveUrl}" target="_blank" class="rec-drive-link">📁 Open in Google Drive →</a>` : ''}
+            <button class="rec-view-cands-btn" data-viewcands="${p.id}">View ${posCands.length} Candidates →</button>
           </div>
+          ${posCands.length ? `
           <div class="rec-pos-section-title" style="margin-top:18px">Candidates for this role</div>
           <div class="rec-mini-cand-list">
-            ${candidates.filter(c=>c.positionId===pos.id).map(c => {
+            ${posCands.map(c => {
               const st = statusCfg(c.status);
               return `<div class="rec-mini-cand">
-                <div class="rec-mini-avatar">${c.initials}</div>
+                <div class="rec-mini-avatar">${c.initials||'?'}</div>
                 <div class="rec-mini-info">
-                  <div class="rec-mini-name">${c.name}</div>
-                  <div class="rec-mini-role">${c.currentRole} · ${c.currentCompany}</div>
+                  <div class="rec-mini-name">${escHtml(c.name)}</div>
+                  <div class="rec-mini-role">${escHtml(c.currentRole||c.current_role||'')} · ${escHtml(c.currentCompany||c.current_company||'')}</div>
                 </div>
                 <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
-                ${c.emailSent?'<span class="email-sent-badge">✉ Sent</span>':'<span class="email-not-sent-badge">✉ Not sent</span>'}
-                <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">CV →</a>
+                ${(c.emailSent||c.email_sent)?'<span class="email-sent-badge">✉ Sent</span>':'<span class="email-not-sent-badge">✉ Not sent</span>'}
+                ${(c.driveUrl||c.drive_url)?`<a href="${c.driveUrl||c.drive_url}" target="_blank" class="rec-cv-link">CV →</a>`:''}
               </div>`;
             }).join('')}
-          </div>
+          </div>` : ''}
         </div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
 }
 
-function renderCandidatesTab(activePos) {
+function renderCandidatesTab() {
+  const pos = allPositions();
+  const cands = allCandidates();
   const posFilter = state.recPosition;
-  let list = posFilter ? candidates.filter(c=>c.positionId===posFilter) : candidates;
+  const list = posFilter ? cands.filter(c=>(c.positionId||c.position_id)===posFilter) : cands;
 
   return `
   <div class="rec-cands-layout">
     <div class="rec-pos-sidebar">
       <div class="rec-pos-sidebar-label">Filter by Position</div>
-      <button class="rec-pos-filter-btn ${!posFilter?'active':''}" data-posfilter="">All (${candidates.length})</button>
-      ${positions.map(p=>`
+      <button class="rec-pos-filter-btn ${!posFilter?'active':''}" data-posfilter="">All (${cands.length})</button>
+      ${pos.map(p=>`
         <button class="rec-pos-filter-btn ${posFilter===p.id?'active':''}" data-posfilter="${p.id}">
-          ${p.title} <span style="color:var(--text-3)">(${candidates.filter(c=>c.positionId===p.id).length})</span>
+          ${escHtml(p.title)} <span style="color:var(--text-3)">(${cands.filter(c=>(c.positionId||c.position_id)===p.id).length})</span>
         </button>`).join('')}
     </div>
     <div class="rec-cands-list">
+      ${list.length===0 ? '<div class="social-empty">No candidates yet. Click "+ Add Candidate" to add one.</div>' : ''}
       ${list.map(c => {
         const st = statusCfg(c.status);
-        const pos = positions.find(p=>p.id===c.positionId);
+        const p = pos.find(p=>p.id===(c.positionId||c.position_id));
+        const driveUrl = c.driveUrl||c.drive_url||'';
         return `
         <div class="rec-cand-card" data-open-candidate="${c.id}" style="cursor:pointer">
-          <div class="rec-cand-avatar">${c.initials}</div>
+          <div class="rec-cand-avatar">${c.initials||'?'}</div>
           <div class="rec-cand-body">
             <div class="rec-cand-top">
               <div>
-                <div class="rec-cand-name">${c.name}</div>
-                <div class="rec-cand-role">${c.currentRole} · ${c.currentCompany}</div>
-                <div class="rec-cand-loc">📍 ${c.location} ${pos?`· <span class="rec-pos-tag">${pos.title}</span>`:''}
+                <div class="rec-cand-name">${escHtml(c.name)}</div>
+                <div class="rec-cand-role">${escHtml(c.currentRole||c.current_role||'')} · ${escHtml(c.currentCompany||c.current_company||'')}</div>
+                <div class="rec-cand-loc">📍 ${escHtml(c.location||'—')} ${p?`· <span class="rec-pos-tag">${escHtml(p.title)}</span>`:''}
+                ${(c.currentSalary||c.current_salary)?`<span style="color:var(--text-3);margin-left:8px">Current: ${escHtml(c.currentSalary||c.current_salary)}</span>`:''}
+                ${(c.desiredSalary||c.desired_salary)?`<span style="color:var(--green);margin-left:8px">Desired: ${escHtml(c.desiredSalary||c.desired_salary)}</span>`:''}
                 </div>
               </div>
               <div class="rec-cand-actions">
                 <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
-                <select class="cand-status-select" data-cand-status="${c.id}">
+                <select class="cand-status-select" data-cand-status="${c.id}" data-cand-db="${c.isDb?'1':'0'}">
                   ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
                 </select>
+                <button class="btn-ghost" style="font-size:10px;padding:3px 8px" data-edit-cand="${c.id}" onclick="event.stopPropagation()">Edit</button>
+                <button class="btn-danger-sm" data-delete-cand="${c.id}" data-cand-db="${c.isDb?'1':'0'}" onclick="event.stopPropagation()">🗑</button>
               </div>
             </div>
-            <div class="rec-cand-summary">${c.summary}</div>
-            ${c.tags.length?`<div class="rec-cand-tags">${c.tags.map(t=>`<span class="rec-tag">${t}</span>`).join('')}</div>`:''}
+            ${c.summary?`<div class="rec-cand-summary">${escHtml(c.summary)}</div>`:''}
+            ${(c.tags||[]).length?`<div class="rec-cand-tags">${(c.tags||[]).map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>`:''}
             <div class="rec-cand-footer">
               <label class="email-toggle">
-                <input type="checkbox" data-email-toggle="${c.id}" ${c.emailSent?'checked':''}>
+                <input type="checkbox" data-email-toggle="${c.id}" data-cand-db="${c.isDb?'1':'0'}" ${(c.emailSent||c.email_sent)?'checked':''}>
                 <span>Email sent to candidate</span>
               </label>
-              ${c.email?`<span class="rec-email">${c.email}</span>`:''}
-              <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>
+              ${c.email?`<span class="rec-email">${escHtml(c.email)}</span>`:''}
+              ${driveUrl?`<a href="${driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>`:''}
             </div>
-            ${c.notes?`<div class="rec-cand-notes-display">${c.notes}</div>`:''}
-            <textarea class="rec-notes-area" data-rec-notes="${c.id}" placeholder="Add notes about this candidate…">${c.notes||''}</textarea>
+            <textarea class="rec-notes-area" data-rec-notes="${c.id}" data-cand-db="${c.isDb?'1':'0'}" placeholder="Add notes…">${escHtml(c.notes||'')}</textarea>
           </div>
         </div>`;
       }).join('')}
@@ -327,73 +365,220 @@ function renderCandidatesTab(activePos) {
 }
 
 function renderTalentPoolTab() {
+  const pos = allPositions();
+  const cands = allCandidates();
   const byPos = {};
-  positions.forEach(p => { byPos[p.id] = candidates.filter(c=>c.positionId===p.id); });
+  pos.forEach(p => { byPos[p.id] = cands.filter(c=>(c.positionId||c.position_id)===p.id); });
 
   return `
   <div class="talent-pool">
     <div class="talent-pool-header">
       <div class="talent-pool-stats">
         <div class="metric-card" style="display:inline-flex;flex-direction:column;margin-right:10px">
-          <div class="metric-label">Total CVs</div>
-          <div class="metric-value">${candidates.length}</div>
+          <div class="metric-label">Total CVs</div><div class="metric-value">${cands.length}</div>
         </div>
         <div class="metric-card" style="display:inline-flex;flex-direction:column;margin-right:10px">
-          <div class="metric-label">Shortlisted</div>
-          <div class="metric-value green">${candidates.filter(c=>c.status==='shortlisted').length}</div>
+          <div class="metric-label">Shortlisted</div><div class="metric-value green">${cands.filter(c=>c.status==='shortlisted').length}</div>
         </div>
         <div class="metric-card" style="display:inline-flex;flex-direction:column">
-          <div class="metric-label">Emails Sent</div>
-          <div class="metric-value accent">${candidates.filter(c=>c.emailSent).length}</div>
+          <div class="metric-label">Emails Sent</div><div class="metric-value accent">${cands.filter(c=>c.emailSent||c.email_sent).length}</div>
         </div>
       </div>
     </div>
-
-    ${positions.map(pos => {
-      const posCands = byPos[pos.id] || [];
+    ${pos.map(p => {
+      const posCands = byPos[p.id] || [];
       if (!posCands.length) return '';
       return `
       <div class="talent-pool-section">
         <div class="talent-pool-pos-header">
-          <span class="talent-pool-pos-title">${pos.title}</span>
+          <span class="talent-pool-pos-title">${escHtml(p.title)}</span>
           <span class="talent-pool-pos-count">${posCands.length} candidates</span>
           <span class="talent-pool-pos-short">${posCands.filter(c=>c.status==='shortlisted').length} shortlisted</span>
         </div>
         <table class="talent-pool-table">
-          <thead><tr>
-            <th>Name</th><th>Current Role</th><th>Location</th><th>Status</th><th>Email</th><th>CV</th>
-          </tr></thead>
+          <thead><tr><th>Name</th><th>Current Role</th><th>Location</th><th>Current Salary</th><th>Desired Salary</th><th>Status</th><th>CV</th><th></th></tr></thead>
           <tbody>
             ${posCands.map(c => {
               const st = statusCfg(c.status);
               return `<tr>
                 <td><div style="display:flex;align-items:center;gap:8px">
-                  <div class="rec-mini-avatar" style="width:28px;height:28px;font-size:9px">${c.initials}</div>
-                  <span style="font-weight:500;font-size:12px">${c.name}</span>
+                  <div class="rec-mini-avatar" style="width:28px;height:28px;font-size:9px">${c.initials||'?'}</div>
+                  <span style="font-weight:500;font-size:12px">${escHtml(c.name)}</span>
                 </div></td>
-                <td style="font-size:11px;color:var(--text-2)">${c.currentRole}</td>
-                <td style="font-size:11px;color:var(--text-3)">${c.location}</td>
+                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentRole||c.current_role||'')}</td>
+                <td style="font-size:11px;color:var(--text-3)">${escHtml(c.location||'')}</td>
+                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentSalary||c.current_salary||'—')}</td>
+                <td style="font-size:11px;color:var(--green)">${escHtml(c.desiredSalary||c.desired_salary||'—')}</td>
                 <td><span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span></td>
-                <td>
-                  ${c.emailSent
-                    ? '<span style="font-size:10px;color:var(--green);">✉ Sent</span>'
-                    : '<span style="font-size:10px;color:var(--text-3);">Not sent</span>'}
-                </td>
-                <td><a href="${c.driveUrl}" target="_blank" class="rec-cv-link">View →</a></td>
+                <td>${(c.driveUrl||c.drive_url)?`<a href="${c.driveUrl||c.drive_url}" target="_blank" class="rec-cv-link">View →</a>`:''}</td>
+                <td><button class="btn-danger-sm" data-delete-cand="${c.id}" data-cand-db="${c.isDb?'1':'0'}" style="font-size:10px;padding:2px 6px">🗑</button></td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
     }).join('')}
-  </div>`
+  </div>`;
+}
+
+// ── Position Modal ────────────────────────────────────────────────────
+function renderPositionModal() {
+  const p = state.positionEditData || {};
+  const isEdit = !!p.id;
+  return `
+  <div class="modal-overlay" id="pos-modal-overlay">
+    <div class="modal-box" style="max-width:580px" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Position' : 'Add New Position'}</div>
+        <button class="modal-close" id="pos-modal-close">✕</button>
+      </div>
+      <form id="pos-form" style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Job Title *</label>
+            <input class="form-input" name="title" value="${escHtml(p.title||'')}" placeholder="e.g. Senior Engineer" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select class="form-input" name="type">
+              <option ${(p.type||'Full Time')==='Full Time'?'selected':''}>Full Time</option>
+              <option ${p.type==='Part Time'?'selected':''}>Part Time</option>
+              <option ${p.type==='Contract'?'selected':''}>Contract</option>
+              <option ${p.type==='Freelance'?'selected':''}>Freelance</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-input" name="location" value="${escHtml(p.location||p.location||'')}" placeholder="e.g. Remote — US">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Compensation</label>
+            <input class="form-input" name="comp" value="${escHtml(p.comp||'')}" placeholder="e.g. $80,000–$100,000">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Sector</label>
+            <input class="form-input" name="sector" value="${escHtml(p.sector||'')}" placeholder="e.g. Healthcare">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-input" name="status">
+              <option ${(p.status||'Active')==='Active'?'selected':''}>Active</option>
+              <option ${p.status==='Paused'?'selected':''}>Paused</option>
+              <option ${p.status==='Closed'?'selected':''}>Closed</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Summary / About</label>
+          <textarea class="form-input" name="summary" rows="3" placeholder="Brief description of the role…">${escHtml(p.summary||p.about||'')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Google Drive Link (JD folder)</label>
+          <input class="form-input" name="drive_url" value="${escHtml(p.drive_url||p.driveUrl||'')}" placeholder="https://drive.google.com/…">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+          <button type="button" class="btn-ghost" id="pos-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">${isEdit ? 'Save Changes' : 'Add Position'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ── Candidate Modal ────────────────────────────────────────────────────
+function renderCandidateModal() {
+  const c = state.candidateEditData || {};
+  const isEdit = !!c.id;
+  const pos = allPositions();
+  return `
+  <div class="modal-overlay" id="cand-modal-overlay">
+    <div class="modal-box" style="max-width:580px" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">${isEdit ? 'Edit Candidate' : 'Add New Candidate'}</div>
+        <button class="modal-close" id="cand-modal-close">✕</button>
+      </div>
+      <form id="cand-form" style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input class="form-input" name="name" value="${escHtml(c.name||'')}" placeholder="Jane Smith" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Position</label>
+            <select class="form-input" name="position_id">
+              <option value="">— No position —</option>
+              ${pos.map(p=>`<option value="${p.id}" ${(c.position_id||c.positionId)===p.id?'selected':''}>${escHtml(p.title)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Current Role</label>
+            <input class="form-input" name="current_role" value="${escHtml(c.current_role||c.currentRole||'')}" placeholder="Senior Manager">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Company</label>
+            <input class="form-input" name="current_company" value="${escHtml(c.current_company||c.currentCompany||'')}" placeholder="Acme Corp">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-input" name="location" value="${escHtml(c.location||'')}" placeholder="New York, NY">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" name="email" type="email" value="${escHtml(c.email||'')}" placeholder="jane@example.com">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Current Salary</label>
+            <input class="form-input" name="current_salary" value="${escHtml(c.current_salary||c.currentSalary||'')}" placeholder="e.g. $90,000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Desired Salary</label>
+            <input class="form-input" name="desired_salary" value="${escHtml(c.desired_salary||c.desiredSalary||'')}" placeholder="e.g. $110,000">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">LinkedIn URL</label>
+            <input class="form-input" name="linkedin" value="${escHtml(c.linkedin||'')}" placeholder="linkedin.com/in/…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">CV / Drive Link</label>
+            <input class="form-input" name="drive_url" value="${escHtml(c.drive_url||c.driveUrl||'')}" placeholder="https://drive.google.com/…">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${(c.status||'new')===s.id?'selected':''}>${s.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Summary / Experience</label>
+          <textarea class="form-input" name="summary" rows="3" placeholder="Brief profile summary…">${escHtml(c.summary||'')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-input" name="notes" rows="2" placeholder="Internal notes…">${escHtml(c.notes||'')}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+          <button type="button" class="btn-ghost" id="cand-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">${isEdit ? 'Save Changes' : 'Add Candidate'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
 }
 
 export function attachRecruitingEvents() {
-  // Recruiting tabs
-  document.querySelectorAll('[data-rectab]').forEach(el => {
-    el.addEventListener('click', () => { state.recTab=el.dataset.rectab; app.render(); });
-  });
   // Position expand
   document.querySelectorAll('[data-expand-pos]').forEach(el => {
     el.addEventListener('click', () => {
@@ -410,29 +595,150 @@ export function attachRecruitingEvents() {
   document.querySelectorAll('[data-posfilter]').forEach(el => {
     el.addEventListener('click', () => { state.recPosition=el.dataset.posfilter||null; app.render(); });
   });
+  // Position status change
+  document.querySelectorAll('[data-pos-status]').forEach(sel => {
+    sel.addEventListener('change', async e => {
+      const id = sel.dataset.posStatus;
+      const p = state.dbPositions.find(x=>x.id===id);
+      if (p) {
+        p.status = e.target.value;
+        try { await updateDbPosition(id, { status: e.target.value }); showToast(`Position → ${e.target.value}`, 'success'); app.render(); }
+        catch(err) { showToast('Error: ' + err.message, 'error'); }
+      }
+    });
+  });
+  // Delete position
+  document.querySelectorAll('[data-delete-pos]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this position? This cannot be undone.')) return;
+      try {
+        await deleteDbPosition(btn.dataset.deletePos);
+        state.dbPositions = await fetchDbPositions();
+        showToast('Position deleted', 'success'); app.render();
+      } catch(err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+  // Edit position
+  document.querySelectorAll('[data-edit-pos]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = state.dbPositions.find(x=>x.id===btn.dataset.editPos);
+      if (p) { state.positionModal = 'edit'; state.positionEditData = { ...p }; app.render(); }
+    });
+  });
+  // Add position button
+  document.getElementById('btn-add-position')?.addEventListener('click', () => {
+    state.positionModal = 'new'; state.positionEditData = {}; app.render();
+  });
+  // Position modal events
+  const posCancelClose = () => { state.positionModal = null; state.positionEditData = null; app.render(); };
+  document.getElementById('pos-modal-close')?.addEventListener('click', posCancelClose);
+  document.getElementById('pos-modal-cancel')?.addEventListener('click', posCancelClose);
+  document.getElementById('pos-modal-overlay')?.addEventListener('click', e => { if (e.target.id==='pos-modal-overlay') posCancelClose(); });
+  document.getElementById('pos-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { title: fd.get('title'), type: fd.get('type'), location: fd.get('location'), comp: fd.get('comp'), sector: fd.get('sector'), status: fd.get('status'), summary: fd.get('summary'), drive_url: fd.get('drive_url') };
+    try {
+      if (state.positionEditData?.id) { await updateDbPosition(state.positionEditData.id, data); showToast('Position updated ✓', 'success'); }
+      else { await createDbPosition(data); showToast('Position added ✓', 'success'); }
+      state.dbPositions = await fetchDbPositions();
+      state.positionModal = null; state.positionEditData = null; app.render();
+    } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  });
+
+  // Add candidate button
+  const openCandModal = () => { state.candidateModal = 'new'; state.candidateEditData = {}; app.render(); };
+  document.getElementById('btn-add-candidate')?.addEventListener('click', openCandModal);
+  document.getElementById('btn-add-candidate-pool')?.addEventListener('click', openCandModal);
+  // Edit candidate
+  document.querySelectorAll('[data-edit-cand]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.editCand;
+      const c = allCandidates().find(x=>x.id===id);
+      if (c) { state.candidateModal = 'edit'; state.candidateEditData = { ...c }; app.render(); }
+    });
+  });
+  // Delete candidate
+  document.querySelectorAll('[data-delete-cand]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this candidate?')) return;
+      const id = btn.dataset.deleteCand;
+      const isDb = btn.dataset.candDb === '1';
+      try {
+        if (isDb) { await deleteDbCandidate(id); state.dbCandidates = await fetchDbCandidates(); }
+        else { showToast('Hardcoded candidates can only be deleted after migrating to DB. Run supabase-recruiting.sql first.', 'error'); return; }
+        showToast('Candidate deleted', 'success'); app.render();
+      } catch(err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+  // Candidate modal events
+  const candCancelClose = () => { state.candidateModal = null; state.candidateEditData = null; app.render(); };
+  document.getElementById('cand-modal-close')?.addEventListener('click', candCancelClose);
+  document.getElementById('cand-modal-cancel')?.addEventListener('click', candCancelClose);
+  document.getElementById('cand-modal-overlay')?.addEventListener('click', e => { if (e.target.id==='cand-modal-overlay') candCancelClose(); });
+  document.getElementById('cand-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      name: fd.get('name'), position_id: fd.get('position_id')||null,
+      current_role: fd.get('current_role'), current_company: fd.get('current_company'),
+      location: fd.get('location'), email: fd.get('email'),
+      current_salary: fd.get('current_salary'), desired_salary: fd.get('desired_salary'),
+      linkedin: fd.get('linkedin'), drive_url: fd.get('drive_url'),
+      status: fd.get('status'), summary: fd.get('summary'), notes: fd.get('notes'),
+    };
+    try {
+      if (state.candidateEditData?.id && state.candidateEditData?.isDb) {
+        await updateDbCandidate(state.candidateEditData.id, data); showToast('Candidate updated ✓', 'success');
+      } else { await createDbCandidate(data); showToast('Candidate added ✓', 'success'); }
+      state.dbCandidates = await fetchDbCandidates();
+      state.candidateModal = null; state.candidateEditData = null; app.render();
+    } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  });
+
   // Candidate status select
   document.querySelectorAll('[data-cand-status]').forEach(sel => {
-    sel.addEventListener('change', e => {
-      const c = candidates.find(x=>x.id===sel.dataset.candStatus);
-      if (c) { c.status=e.target.value; persistCandidate(c); showToast(`${c.name} → ${e.target.value}`); app.render(); }
+    sel.addEventListener('change', async e => {
+      const id = sel.dataset.candStatus;
+      const isDb = sel.dataset.candDb === '1';
+      if (isDb) {
+        const c = state.dbCandidates.find(x=>x.id===id);
+        if (c) { c.status = e.target.value; await updateDbCandidate(id, { status: e.target.value }); showToast(`Status updated`, 'success'); app.render(); }
+      } else {
+        const c = candidates.find(x=>x.id===id);
+        if (c) { c.status=e.target.value; persistCandidate(c); showToast(`${c.name} → ${e.target.value}`); app.render(); }
+      }
     });
   });
   // Email sent toggle
   document.querySelectorAll('[data-email-toggle]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const c = candidates.find(x=>x.id===cb.dataset.emailToggle);
-      if (c) { c.emailSent=cb.checked; persistCandidate(c); showToast(cb.checked?`✉ Email marked sent — ${c.name}`:`Email unmarked — ${c.name}`); }
+    cb.addEventListener('change', async () => {
+      const id = cb.dataset.emailToggle;
+      const isDb = cb.dataset.candDb === '1';
+      if (isDb) {
+        const c = state.dbCandidates.find(x=>x.id===id);
+        if (c) { c.email_sent = cb.checked; await updateDbCandidate(id, { email_sent: cb.checked }); showToast(cb.checked?`✉ Email marked sent`:`Email unmarked`); }
+      } else {
+        const c = candidates.find(x=>x.id===id);
+        if (c) { c.emailSent=cb.checked; persistCandidate(c); showToast(cb.checked?`✉ Email marked sent — ${c.name}`:`Email unmarked — ${c.name}`); }
+      }
     });
   });
   // Candidate notes
   document.querySelectorAll('[data-rec-notes]').forEach(ta => {
-    ta.addEventListener('input', () => {
-      const c = candidates.find(x=>x.id===ta.dataset.recNotes);
-      if (c) { c.notes=ta.value; persistCandidate(c); }
+    ta.addEventListener('input', async () => {
+      const id = ta.dataset.recNotes;
+      const isDb = ta.dataset.candDb === '1';
+      if (isDb) {
+        const c = state.dbCandidates.find(x=>x.id===id);
+        if (c) { c.notes = ta.value; await updateDbCandidate(id, { notes: ta.value }); }
+      } else {
+        const c = candidates.find(x=>x.id===id);
+        if (c) { c.notes=ta.value; persistCandidate(c); }
+      }
     });
   });
-
-  // Phase 3: card click (not on inline controls) opens the candidate slide-over
+  // Card click opens slide-over
   document.querySelectorAll('[data-open-candidate]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button,textarea,select,a,input,label')) return;
@@ -442,20 +748,23 @@ export function attachRecruitingEvents() {
   });
 }
 
-// ── Candidate record slide-over (Phase 3) ─────────────────────────────
+// ── Candidate record slide-over ────────────────────────────────────────
 function renderCandidatePanel() {
-  const c = candidates.find(x => x.id === state.candidatePanel);
+  const allC = allCandidates();
+  const c = allC.find(x => x.id === state.candidatePanel);
   if (!c) return '';
   const st = statusCfg(c.status);
-  const pos = positions.find(p => p.id === c.positionId);
+  const pos = allPositions().find(p => p.id === (c.positionId||c.position_id));
+  const driveUrl = c.driveUrl||c.drive_url||'';
+  const emailSent = c.emailSent||c.email_sent;
   return `
   <div class="slideover" id="candidate-panel">
     <div class="slideover-head">
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <div class="rec-cand-avatar" style="width:38px;height:38px;font-size:12px">${c.initials}</div>
+        <div class="rec-cand-avatar" style="width:38px;height:38px;font-size:12px">${c.initials||'?'}</div>
         <div style="min-width:0">
           <div class="slideover-title">${escHtml(c.name)}</div>
-          <div class="slideover-sub">${escHtml(c.currentRole)} · ${escHtml(c.currentCompany)}</div>
+          <div class="slideover-sub">${escHtml(c.currentRole||c.current_role||'')} · ${escHtml(c.currentCompany||c.current_company||'')}</div>
         </div>
       </div>
       <button class="modal-close" id="candidate-panel-close">✕</button>
@@ -464,54 +773,58 @@ function renderCandidatePanel() {
       <div class="slideover-section-title">Properties</div>
       <div class="lp-row">
         <label class="lp-label">Status</label>
-        <select class="lp-input" id="cp-status" ${can('recruiting','edit')?'':'disabled'}>
+        <select class="lp-input" id="cp-status">
           ${CANDIDATE_STATUSES.map(s => `<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
         </select>
       </div>
       <div class="lp-row"><label class="lp-label">Position</label><div class="lp-static">${pos ? escHtml(pos.title) : '—'}</div></div>
       <div class="lp-row"><label class="lp-label">Location</label><div class="lp-static">${escHtml(c.location || '—')}</div></div>
       <div class="lp-row"><label class="lp-label">Email</label><div class="lp-static">${escHtml(c.email || '—')}</div></div>
+      <div class="lp-row"><label class="lp-label">Current Salary</label><div class="lp-static">${escHtml(c.currentSalary||c.current_salary||'—')}</div></div>
+      <div class="lp-row"><label class="lp-label">Desired Salary</label><div class="lp-static" style="color:var(--green)">${escHtml(c.desiredSalary||c.desired_salary||'—')}</div></div>
       <div class="lp-row">
         <label class="lp-label">Email sent</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer">
-          <input type="checkbox" id="cp-email-sent" ${c.emailSent?'checked':''} ${can('recruiting','edit')?'':'disabled'} style="accent-color:var(--accent)" /> Outreach email sent to candidate
+          <input type="checkbox" id="cp-email-sent" ${emailSent?'checked':''} style="accent-color:var(--accent)" /> Outreach email sent to candidate
         </label>
       </div>
       <div class="lp-row">
         <label class="lp-label">Notes</label>
-        <textarea class="lp-input" rows="4" id="cp-notes" ${can('recruiting','edit')?'':'disabled'}>${escHtml(c.notes || '')}</textarea>
+        <textarea class="lp-input" rows="4" id="cp-notes">${escHtml(c.notes || '')}</textarea>
       </div>
-
       <div class="slideover-section-title">Summary</div>
       <div style="font-size:12px;color:var(--text-2);line-height:1.7">${escHtml(c.summary || '')}</div>
-      ${c.tags?.length ? `<div class="rec-cand-tags" style="margin-top:10px">${c.tags.map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
-
+      ${(c.tags||[]).length ? `<div class="rec-cand-tags" style="margin-top:10px">${(c.tags||[]).map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
       <div class="slideover-section-title">Related</div>
-      <a href="${c.driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>
+      ${driveUrl?`<a href="${driveUrl}" target="_blank" class="rec-cv-link">📄 View CV →</a>`:''}
       <span class="cand-status-pill" style="margin-left:8px;background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
     </div>
   </div>`;
 }
 
 function attachCandidatePanelEvents() {
-  const panel = document.getElementById('candidate-panel');
-  if (!panel) return;
-  const c = candidates.find(x => x.id === state.candidatePanel);
+  if (!document.getElementById('candidate-panel')) return;
+  const allC = allCandidates();
+  const c = allC.find(x => x.id === state.candidatePanel);
+  if (!c) return;
   const close = () => { state.candidatePanel = null; app.render(); };
   document.getElementById('candidate-panel-close')?.addEventListener('click', close);
   document.addEventListener('keydown', function esc(e) {
     if (e.key === 'Escape') { document.removeEventListener('keydown', esc); if (state.candidatePanel) close(); }
   });
-  document.getElementById('cp-status')?.addEventListener('change', (e) => {
-    c.status = e.target.value; persistCandidate(c);
-    showToast(`${c.name} → ${e.target.value}`); app.render();
+  document.getElementById('cp-status')?.addEventListener('change', async (e) => {
+    if (c.isDb) { c.status = e.target.value; await updateDbCandidate(c.id, { status: e.target.value }); showToast(`Status updated`); }
+    else { c.status = e.target.value; persistCandidate(c); showToast(`${c.name} → ${e.target.value}`); }
+    app.render();
   });
-  document.getElementById('cp-email-sent')?.addEventListener('change', (e) => {
-    c.emailSent = e.target.checked; persistCandidate(c);
-    showToast(e.target.checked ? `✉ Email marked sent — ${c.name}` : `Email unmarked — ${c.name}`);
+  document.getElementById('cp-email-sent')?.addEventListener('change', async (e) => {
+    if (c.isDb) { c.email_sent = e.target.checked; await updateDbCandidate(c.id, { email_sent: e.target.checked }); }
+    else { c.emailSent = e.target.checked; persistCandidate(c); }
+    showToast(e.target.checked ? `✉ Email marked sent` : `Email unmarked`);
   });
-  document.getElementById('cp-notes')?.addEventListener('input', (e) => {
-    c.notes = e.target.value; persistCandidate(c);
+  document.getElementById('cp-notes')?.addEventListener('input', async (e) => {
+    if (c.isDb) { c.notes = e.target.value; await updateDbCandidate(c.id, { notes: e.target.value }); }
+    else { c.notes = e.target.value; persistCandidate(c); }
   });
 }
 

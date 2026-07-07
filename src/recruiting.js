@@ -1,4 +1,76 @@
-// ── Positions ────────────────────────────────────────────────────────
+import { supabase } from './supabase.js';
+import { currentUser } from './auth.js';
+
+// ── DB Functions ─────────────────────────────────────────────────────
+export async function fetchDbPositions() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('recruiting_positions').select('*').order('created_at', { ascending: false });
+  if (error) { console.warn('fetchDbPositions', error); return []; }
+  return data || [];
+}
+
+export async function createDbPosition(pos) {
+  if (!supabase) throw new Error('DB not connected');
+  const { data, error } = await supabase.from('recruiting_positions').insert({
+    title: pos.title, type: pos.type || 'Full Time', location: pos.location || '',
+    comp: pos.comp || '', status: pos.status || 'Active', priority: pos.priority || false,
+    sector: pos.sector || '', drive_url: pos.drive_url || '', summary: pos.summary || '',
+    about: pos.about || '', responsibilities: pos.responsibilities || [],
+    requirements: pos.requirements || [], created_by: currentUser?.id,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateDbPosition(id, updates) {
+  if (!supabase) return;
+  const { error } = await supabase.from('recruiting_positions').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteDbPosition(id) {
+  if (!supabase) return;
+  const { error } = await supabase.from('recruiting_positions').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function fetchDbCandidates() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('recruiting_candidates').select('*').order('created_at', { ascending: false });
+  if (error) { console.warn('fetchDbCandidates', error); return []; }
+  return data || [];
+}
+
+export async function createDbCandidate(cand) {
+  if (!supabase) throw new Error('DB not connected');
+  const initials = cand.initials || cand.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const { data, error } = await supabase.from('recruiting_candidates').insert({
+    position_id: cand.position_id || null, name: cand.name, initials,
+    current_role: cand.current_role || '', current_company: cand.current_company || '',
+    location: cand.location || '', email: cand.email || '', linkedin: cand.linkedin || '',
+    status: cand.status || 'new', email_sent: cand.email_sent || false,
+    summary: cand.summary || '', drive_url: cand.drive_url || '',
+    tags: cand.tags || [], notes: cand.notes || '',
+    current_salary: cand.current_salary || '', desired_salary: cand.desired_salary || '',
+    created_by: currentUser?.id,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateDbCandidate(id, updates) {
+  if (!supabase) return;
+  const { error } = await supabase.from('recruiting_candidates').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteDbCandidate(id) {
+  if (!supabase) return;
+  const { error } = await supabase.from('recruiting_candidates').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ── Static Seed Positions ─────────────────────────────────────────────
 export const positions = [
   {
     id: 'dir-sales',

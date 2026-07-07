@@ -6,7 +6,7 @@ import {
   app, state, prospects, candidates, addedFromSearch,
   showToast, checkBackend, escHtml, attachCopyButtons,
 } from './app-core.js';
-import { positions } from './recruiting.js';
+import { positions, fetchDbPositions, fetchDbCandidates } from './recruiting.js';
 import { supabase, DB_ENABLED, loadDbState } from './supabase.js';
 import { initAuth, currentUser, currentProfile, signIn, signUp, signOut } from './auth.js';
 import { fetchLeads } from './leads.js';
@@ -187,6 +187,7 @@ async function loadViewData(view) {
     state.mapNodes = g.nodes; state.mapEdges = g.edges;
   }
   if (view === 'tasks') state.tasks = await fetchTasks();
+  if (view === 'recruiting') { state.dbPositions = await fetchDbPositions(); state.dbCandidates = await fetchDbCandidates(); }
   if (view === 'contact-subs') { state.contactSubmissions = await fetchContactSubmissions(); state.tasks = await fetchTasks(); }
   if (view === 'general-cvs') { state.generalCVs = await fetchGeneralCVs(); state.tasks = await fetchTasks(); }
   if (view === 'job-apps') { state.jobApplications = await fetchJobApplications(); state.tasks = await fetchTasks(); }
@@ -746,7 +747,7 @@ async function boot() {
     syncHash();
     state.leadsLoading = true;
     render();
-    const [leads, projects, team, socialPosts, contactSubs, generalCVs, jobApps, unread, tasks] = await Promise.all([
+    const [leads, projects, team, socialPosts, contactSubs, generalCVs, jobApps, unread, tasks, dbPositions, dbCandidates] = await Promise.all([
       fetchLeads(),
       fetchProjects(),
       fetchTeam(),
@@ -756,6 +757,8 @@ async function boot() {
       fetchJobApplications(),
       getUnreadCount(),
       fetchTasks(),
+      fetchDbPositions(),
+      fetchDbCandidates(),
     ]);
     state.leads = leads;
     state.projects = projects;
@@ -767,6 +770,8 @@ async function boot() {
     state.leadsLoading = false;
     state.unreadCount = unread;
     state.tasks = tasks;
+    state.dbPositions = dbPositions;
+    state.dbCandidates = dbCandidates;
     state.notifUnsub = subscribeToNotifications((notif) => {
       state.unreadCount++;
       showToast(notif.title, 'info');

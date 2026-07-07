@@ -152,6 +152,12 @@ const state = {
   recTab: 'positions',
   recPosition: null,
   recExpandedCandidate: null,
+  dbPositions: [],
+  dbCandidates: [],
+  positionModal: null,   // 'new' | 'edit'
+  positionEditData: null,
+  candidateModal: null,  // 'new' | 'edit'
+  candidateEditData: null,
   dbStatus: null,
   persisted: loadSaved(),
 };
