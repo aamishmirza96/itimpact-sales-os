@@ -34,7 +34,8 @@ export const LEVELS = [
   { id: 'full', label: 'Full control' },
 ];
 
-const ORDER = { none: 0, view: 1, edit: 2, full: 3 };
+// 'comment' sits between view and edit (can see + comment, can't edit data)
+const ORDER = { none: 0, view: 1, comment: 1, edit: 2, full: 3 };
 
 // Dev-only: lets tests simulate a profile from the console
 if (import.meta.env.DEV) window.__accessOverride = null;

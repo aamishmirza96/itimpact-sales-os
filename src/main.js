@@ -399,7 +399,7 @@ function render() {
     return;
   }
   // Read-only members get a UI-level interaction gate on the content area
-  const viewOnly = accessLevel(moduleForView(state.view)) === 'view';
+  const viewOnly = ['view', 'comment'].includes(accessLevel(moduleForView(state.view)));
   document.getElementById('app').innerHTML = `
     ${renderSidebar()}
     <div class="content-wrap">
