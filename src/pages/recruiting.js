@@ -22,9 +22,10 @@ function salaryInputs(fieldName, candId, isDb, rawVal) {
   </div>`;
 }
 
-// Merge hardcoded + DB positions/candidates
+// DB is available: always use live DB data; never mix in hardcoded fallback
 function allPositions() {
-  return state.recruitingDbReady ? state.dbPositions : positions;
+  if (state.recruitingDbReady || state.dbStatus === 'connected') return state.dbPositions;
+  return positions;
 }
 function allCandidates() {
   const dbC = state.dbCandidates.map(c => ({
@@ -33,7 +34,7 @@ function allCandidates() {
     currentSalary: c.current_salary, desiredSalary: c.desired_salary,
     driveUrl: c.drive_url, isDb: true,
   }));
-  if (state.recruitingDbReady) return dbC;
+  if (state.recruitingDbReady || state.dbStatus === 'connected') return dbC;
   return [...candidates, ...dbC];
 }
 
@@ -224,6 +225,13 @@ function statusCfg(id) { return CANDIDATE_STATUSES.find(s=>s.id===id) || CANDIDA
 const STATUS_COLORS = { Active:'#10b981', Paused:'#f59e0b', Closed:'#ef4444' };
 
 function renderRecruiting() {
+  // Show spinner while DB data is loading (prevents hardcoded fallback flash)
+  if (state.dbStatus === 'connected' && !state.recruitingDbReady && state.dbPositions.length === 0) {
+    return `<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-3);font-size:14px;gap:10px">
+      <div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+      Loading recruiting data…
+    </div>`;
+  }
   const pos = allPositions();
   const cands = allCandidates();
   const usingDb = state.recruitingDbReady;
