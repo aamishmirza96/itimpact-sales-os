@@ -160,6 +160,7 @@ const state = {
   candidateModal: null,  // 'new' | 'edit'
   candidateEditData: null,
   dbStatus: null,
+  jobBoardSelected: null,
   persisted: loadSaved(),
 };
 

@@ -52,6 +52,7 @@ import {
   attachAnalyticsEvents, attachAgentEvents, attachMapEvents, attachApiKeyModalEvents,
   fetchGAData,
 } from './pages/reports.js';
+import { renderJobBoard, renderJobDetailPanel, attachJobBoardEvents } from './pages/job-board.js';
 
 // ── Nav structure ─────────────────────────────────────────────────────
 // Clean inline SVG icons (stroke inherits currentColor).
@@ -64,6 +65,7 @@ const ICONS = {
   content:   ic('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>'),
   inbox:     ic('<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 01-2 2H4a2 2 0 01-2-2v-6l3.5-7z"/>'),
   reports:   ic('<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="0.5"/><rect x="12" y="8" width="3" height="10" rx="0.5"/><rect x="17" y="5" width="3" height="13" rx="0.5"/>'),
+  jobboard:  ic('<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>'),
 };
 
 // 7 top-level pages; every old sidebar view is a tab inside one of them.
@@ -109,6 +111,9 @@ const PAGES = [
     { key: 'analytics', view: 'analytics', label: 'Analytics' },
     { key: 'map', view: 'map', label: 'Relationship Map' },
     { key: 'agents', view: 'agents', label: 'AI Agents' },
+  ]},
+  { id: 'jobboard', label: 'Job Board', icon: ICONS.jobboard, tabs: [
+    { key: 'openings', view: 'job-board', label: 'Current Openings', count: () => (state.dbPositions || []).filter(p => p.status === 'Active').length },
   ]},
 ];
 
@@ -322,6 +327,7 @@ function renderView() {
   if (state.view === 'icp')            return renderICP();
   if (state.view === 'disqualify')     return renderDisqualify();
   if (state.view === 'outreach')       return renderOutreach();
+  if (state.view === 'job-board')      return renderJobBoard();
   return '';
 }
 
@@ -480,6 +486,16 @@ function render() {
       attachCandidatePanelEvents();
     }
   }
+  // Job Board detail panel
+  document.getElementById('job-detail-overlay')?.remove();
+  if (state.jobBoardSelected) {
+    const el = document.createElement('div');
+    el.innerHTML = renderJobDetailPanel();
+    if (el.firstElementChild) {
+      document.body.appendChild(el.firstElementChild);
+      attachJobBoardEvents();
+    }
+  }
 }
 
 // ── Global search (Phase 3) ───────────────────────────────────────────
@@ -630,6 +646,7 @@ function attachEvents() {
   attachSubmissionEvents();
   attachTaskEvents();
   attachNotificationsViewEvents();
+  if (state.view === 'job-board') attachJobBoardEvents();
 
   // Theme toggle
   document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
