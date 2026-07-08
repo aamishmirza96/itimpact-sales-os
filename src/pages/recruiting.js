@@ -350,11 +350,7 @@ function renderCandidatesTab() {
             <div class="rec-cand-top">
               <div>
                 <div class="rec-cand-name">${escHtml(c.name)}</div>
-                <div class="rec-cand-role">${escHtml(c.currentRole||c.current_role||'')} · ${escHtml(c.currentCompany||c.current_company||'')}</div>
-                <div class="rec-cand-loc">📍 ${escHtml(c.location||'—')} ${p?`· <span class="rec-pos-tag">${escHtml(p.title)}</span>`:''}
-                ${(c.currentSalary||c.current_salary)?`<span style="color:var(--text-3);margin-left:8px">Current: ${escHtml(c.currentSalary||c.current_salary)}</span>`:''}
-                ${(c.desiredSalary||c.desired_salary)?`<span style="color:var(--green);margin-left:8px">Desired: ${escHtml(c.desiredSalary||c.desired_salary)}</span>`:''}
-                </div>
+                <div class="rec-cand-role">${escHtml(c.currentCompany||c.current_company||'')}${p?` · <span class="rec-pos-tag">${escHtml(p.title)}</span>`:''}</div>
               </div>
               <div class="rec-cand-actions">
                 <span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span>
@@ -367,7 +363,7 @@ function renderCandidatesTab() {
             </div>
             ${c.summary?`<div class="rec-cand-summary">${escHtml(c.summary)}</div>`:''}
             ${(c.tags||[]).length?`<div class="rec-cand-tags">${(c.tags||[]).map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>`:''}
-            <div class="rec-inline-fields" onclick="event.stopPropagation()">
+            <div class="rec-inline-fields">
               <div class="rec-inline-row">
                 <div class="rec-inline-group">
                   <label class="rec-inline-label">Current Role</label>
