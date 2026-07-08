@@ -429,10 +429,22 @@ function renderTalentPoolTab() {
                   <div class="rec-mini-avatar" style="width:28px;height:28px;font-size:9px">${c.initials||'?'}</div>
                   <span style="font-weight:500;font-size:12px">${escHtml(c.name)}</span>
                 </div></td>
-                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentRole||c.current_role||'—')}</td>
-                <td style="font-size:11px;color:var(--text-3)">${escHtml(c.location||'—')}</td>
-                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentSalary||c.current_salary||'—')}</td>
-                <td style="font-size:11px;color:var(--green)">${escHtml(c.desiredSalary||c.desired_salary||'—')}</td>
+                <td><input class="pool-inline-input" data-pool-field="candidate_role" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.currentRole||c.current_role||'')}" placeholder="—" onclick="event.stopPropagation()"></td>
+                <td><input class="pool-inline-input" data-pool-field="location" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.location||'')}" placeholder="—" onclick="event.stopPropagation()"></td>
+                <td><div class="salary-inline-wrap" onclick="event.stopPropagation()">
+                  <select class="salary-currency-sel" data-pool-sal-currency data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" data-sal-field="current_salary">
+                    <option ${!(c.currentSalary||c.current_salary||'').startsWith('PKR')?'selected':''}>$</option>
+                    <option ${(c.currentSalary||c.current_salary||'').startsWith('PKR')?'selected':''}>PKR</option>
+                  </select>
+                  <input class="pool-inline-input" data-pool-field="current_salary" data-pool-sal-amount data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(parseSalary(c.currentSalary||c.current_salary||'').amount)}" placeholder="e.g. 90,000">
+                </div></td>
+                <td><div class="salary-inline-wrap" onclick="event.stopPropagation()">
+                  <select class="salary-currency-sel" data-pool-sal-currency data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" data-sal-field="desired_salary">
+                    <option ${!(c.desiredSalary||c.desired_salary||'').startsWith('PKR')?'selected':''}>$</option>
+                    <option ${(c.desiredSalary||c.desired_salary||'').startsWith('PKR')?'selected':''}>PKR</option>
+                  </select>
+                  <input class="pool-inline-input" data-pool-field="desired_salary" data-pool-sal-amount data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(parseSalary(c.desiredSalary||c.desired_salary||'').amount)}" placeholder="e.g. 110,000">
+                </div></td>
                 <td><select class="cand-status-select" data-cand-status="${c.id}" data-cand-db="${c.isDb?'1':'0'}" style="font-size:10px;padding:3px 6px;border-radius:8px;border:1px solid var(--border);background:${st.color}22;color:${st.color}">
                   ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
                 </select></td>
@@ -783,6 +795,48 @@ export function attachRecruitingEvents() {
       }
     });
   });
+  // Pool table inline field save-on-blur
+  document.querySelectorAll('[data-pool-field]').forEach(el => {
+    const savePoolField = async () => {
+      const id = el.dataset.candId;
+      const isDb = el.dataset.candDb === '1';
+      const field = el.dataset.poolField;
+      if (!isDb) return;
+      let value = el.value.trim();
+      // For salary fields, combine currency selector + amount
+      if (field === 'current_salary' || field === 'desired_salary') {
+        const wrap = el.closest('.salary-inline-wrap');
+        const curSel = wrap?.querySelector('[data-pool-sal-currency]');
+        const cur = curSel?.value || '$';
+        value = value ? `${cur} ${value}` : '';
+      }
+      const c = state.dbCandidates.find(x => x.id === id);
+      if (!c) return;
+      c[field] = value;
+      try { await updateDbCandidate(id, { [field]: value }); showToast('Saved ✓'); }
+      catch(err) { showToast('Save failed: ' + err.message, 'error'); }
+    };
+    el.addEventListener('blur', savePoolField);
+  });
+  // Pool salary currency change also triggers save
+  document.querySelectorAll('[data-pool-sal-currency]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const id = sel.dataset.candId;
+      const isDb = sel.dataset.candDb === '1';
+      const field = sel.dataset.salField;
+      if (!isDb) return;
+      const wrap = sel.closest('.salary-inline-wrap');
+      const amtInput = wrap?.querySelector('[data-pool-sal-amount]');
+      const amt = (amtInput?.value || '').trim();
+      const value = amt ? `${sel.value} ${amt}` : '';
+      const c = state.dbCandidates.find(x => x.id === id);
+      if (!c) return;
+      c[field] = value;
+      try { await updateDbCandidate(id, { [field]: value }); showToast('Saved ✓'); }
+      catch(err) { showToast('Save failed: ' + err.message, 'error'); }
+    });
+  });
+
   // Email sent toggle
   document.querySelectorAll('[data-email-toggle]').forEach(cb => {
     cb.addEventListener('change', async () => {
