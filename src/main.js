@@ -115,9 +115,6 @@ const PAGES = [
   { id: 'aireadiness', label: 'AI Readiness', icon: ICONS.aireadiness, tabs: [
     { key: 'assessments', view: 'ai-assessments', label: 'AI Assessments', count: () => state.aiAssessments?.length || null },
   ]},
-  { id: 'jobboard', label: 'Job Board', icon: ICONS.jobboard, tabs: [
-    { key: 'openings', view: 'job-board', label: 'Current Openings', count: () => (state.dbPositions || []).filter(p => p.status === 'Active').length },
-  ]},
 ];
 
 function pageForView(view) {
