@@ -66,6 +66,7 @@ const ICONS = {
   inbox:     ic('<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 01-2 2H4a2 2 0 01-2-2v-6l3.5-7z"/>'),
   reports:   ic('<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="0.5"/><rect x="12" y="8" width="3" height="10" rx="0.5"/><rect x="17" y="5" width="3" height="13" rx="0.5"/>'),
   jobboard:  ic('<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>'),
+  aireadiness: ic('<path d="M12 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V13h2a1 1 0 010 2h-2v1h2a1 1 0 010 2h-2v2a1 1 0 01-2 0v-2H9a1 1 0 010-2h2v-1H9a1 1 0 010-2h2v-1.1A5 5 0 017 7a5 5 0 015-5z"/>'),
 };
 
 // 7 top-level pages; every old sidebar view is a tab inside one of them.
@@ -86,12 +87,11 @@ const PAGES = [
     { key: 'disqualified', view: 'disqualify', label: 'Disqualified' },
   ]},
   { id: 'recruiting', label: 'Recruiting', icon: ICONS.recruiting, tabs: [
-    { key: 'positions', view: 'recruiting', label: 'Positions', match: () => state.recTab === 'positions', set: () => { state.recTab = 'positions'; }, count: () => positions.length },
+    { key: 'positions', view: 'recruiting', label: 'Positions', match: () => state.recTab === 'positions', set: () => { state.recTab = 'positions'; }, count: () => (state.dbPositions || []).length },
     { key: 'candidates', view: 'recruiting', label: 'Candidates', match: () => state.recTab === 'candidates', set: () => { state.recTab = 'candidates'; }, count: () => candidates.length },
     { key: 'talent-pool', view: 'recruiting', label: 'Talent Pool', match: () => state.recTab === 'pool', set: () => { state.recTab = 'pool'; } },
     { key: 'job-apps', view: 'job-apps', label: 'Job Applications', count: () => state.jobApplications.length },
     { key: 'general-cvs', view: 'general-cvs', label: 'General CVs', count: () => state.generalCVs.length },
-    { key: 'ai-assessments', view: 'ai-assessments', label: 'AI Assessments', count: () => state.aiAssessments.length },
     { key: 'files', view: 'files', label: 'Files' },
   ]},
   { id: 'projects', label: 'Projects & Tasks', icon: ICONS.projects, tabs: [
@@ -111,6 +111,9 @@ const PAGES = [
     { key: 'analytics', view: 'analytics', label: 'Analytics' },
     { key: 'map', view: 'map', label: 'Relationship Map' },
     { key: 'agents', view: 'agents', label: 'AI Agents' },
+  ]},
+  { id: 'aireadiness', label: 'AI Readiness', icon: ICONS.aireadiness, tabs: [
+    { key: 'assessments', view: 'ai-assessments', label: 'AI Assessments', count: () => state.aiAssessments?.length || null },
   ]},
   { id: 'jobboard', label: 'Job Board', icon: ICONS.jobboard, tabs: [
     { key: 'openings', view: 'job-board', label: 'Current Openings', count: () => (state.dbPositions || []).filter(p => p.status === 'Active').length },
