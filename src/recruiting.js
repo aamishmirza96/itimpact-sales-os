@@ -290,12 +290,10 @@ export const candidates = [
 
 // ── Candidate status config ───────────────────────────────────────────
 export const CANDIDATE_STATUSES = [
-  { id:'new',          label:'New',           color:'#5a5a72' },
-  { id:'reviewing',    label:'Reviewing',     color:'#6366f1' },
-  { id:'email-sent',   label:'Email Sent',    color:'#818cf8' },
-  { id:'shortlisted',  label:'Shortlisted',   color:'#10b981' },
-  { id:'interviewing', label:'Interviewing',  color:'#f59e0b' },
-  { id:'offered',      label:'Offered',       color:'#10b981' },
-  { id:'rejected',     label:'Rejected',      color:'#ef4444' },
-  { id:'on-hold',      label:'On Hold',       color:'#9090a8' },
+  { id:'new',          label:'New',                  color:'#5a5a72' },
+  { id:'reviewed',     label:'Reviewed',             color:'#6366f1' },
+  { id:'shortlisted',  label:'Shortlisted',          color:'#10b981' },
+  { id:'interview',    label:'Sent for Interview',   color:'#f59e0b' },
+  { id:'rejected',     label:'Rejected',             color:'#ef4444' },
+  { id:'hired',        label:'Job Given',            color:'#059669' },
 ];

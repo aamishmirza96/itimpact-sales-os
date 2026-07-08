@@ -611,3 +611,20 @@ tr.expanded-row td { padding: 0; background: var(--bg-2); border-bottom: 1px sol
 .job-card-action { flex-shrink: 0; }
 .job-view-btn { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
 .job-view-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Candidate inline field editing ── */
+.rec-inline-fields { padding: 10px 0 4px; border-top: 1px solid var(--border); margin-top: 10px; }
+.rec-inline-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.rec-inline-group { display: flex; flex-direction: column; gap: 3px; }
+.rec-inline-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+.rec-inline-input { font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2); color: var(--text); outline: none; width: 100%; box-sizing: border-box; }
+.rec-inline-input:focus { border-color: var(--accent); background: var(--bg-1); }
+.salary-inline-wrap { display: flex; gap: 4px; align-items: center; }
+.salary-currency-sel { font-size: 10px; padding: 4px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2); color: var(--text); cursor: pointer; flex-shrink: 0; }
+/* Talent pool table inline inputs */
+.pool-inline-input { font-size: 11px; padding: 3px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text); width: 100%; min-width: 80px; box-sizing: border-box; }
+.pool-inline-input:hover { border-color: var(--border); background: var(--bg-2); }
+.pool-inline-input:focus { border-color: var(--accent); background: var(--bg-1); outline: none; }
+.talent-pool-table .salary-inline-wrap { gap: 3px; }
+.talent-pool-table .salary-currency-sel { font-size: 10px; padding: 2px 3px; }
+.talent-pool-table .rec-inline-input { font-size: 11px; padding: 3px 5px; min-width: 60px; }

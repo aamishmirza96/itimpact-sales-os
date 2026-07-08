@@ -5,6 +5,23 @@ import { positions, CANDIDATE_STATUSES, createDbPosition, updateDbPosition, dele
 import { submissionCard, CV_STATUSES, JOBAPP_STATUSES, AI_STATUSES } from './submissions-shared.js';
 import { can } from '../access.js';
 
+// Parse "$ 90,000" or "PKR 500,000" into { currency, amount }
+function parseSalary(val) {
+  const v = (val || '').trim();
+  if (v.startsWith('PKR')) return { currency: 'PKR', amount: v.replace(/^PKR\s*/, '') };
+  return { currency: '$', amount: v.replace(/^\$\s*/, '') };
+}
+function salaryInputs(fieldName, candId, isDb, rawVal) {
+  const { currency, amount } = parseSalary(rawVal);
+  return `<div class="salary-inline-wrap">
+    <select class="salary-currency-sel" data-salary-currency="${fieldName}" data-cand-id="${candId}" data-cand-db="${isDb?'1':'0'}">
+      <option ${currency==='$'?'selected':''}>$</option>
+      <option ${currency==='PKR'?'selected':''}>PKR</option>
+    </select>
+    <input class="rec-inline-input" data-inline-field="${fieldName}" data-cand-id="${candId}" data-cand-db="${isDb?'1':'0'}" value="${escHtml(amount)}" placeholder="e.g. 90,000" style="flex:1;min-width:0">
+  </div>`;
+}
+
 // Merge hardcoded + DB positions/candidates
 function allPositions() {
   return state.recruitingDbReady ? state.dbPositions : positions;
@@ -350,6 +367,28 @@ function renderCandidatesTab() {
             </div>
             ${c.summary?`<div class="rec-cand-summary">${escHtml(c.summary)}</div>`:''}
             ${(c.tags||[]).length?`<div class="rec-cand-tags">${(c.tags||[]).map(t=>`<span class="rec-tag">${escHtml(t)}</span>`).join('')}</div>`:''}
+            <div class="rec-inline-fields" onclick="event.stopPropagation()">
+              <div class="rec-inline-row">
+                <div class="rec-inline-group">
+                  <label class="rec-inline-label">Current Role</label>
+                  <input class="rec-inline-input" data-inline-field="candidate_role" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.currentRole||c.current_role||'')}" placeholder="e.g. Sales Manager">
+                </div>
+                <div class="rec-inline-group">
+                  <label class="rec-inline-label">Location</label>
+                  <input class="rec-inline-input" data-inline-field="location" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.location||'')}" placeholder="e.g. New York">
+                </div>
+              </div>
+              <div class="rec-inline-row">
+                <div class="rec-inline-group">
+                  <label class="rec-inline-label">Current Salary</label>
+                  ${salaryInputs('current_salary', c.id, c.isDb, c.currentSalary||c.current_salary||'')}
+                </div>
+                <div class="rec-inline-group">
+                  <label class="rec-inline-label">Desired Salary</label>
+                  ${salaryInputs('desired_salary', c.id, c.isDb, c.desiredSalary||c.desired_salary||'')}
+                </div>
+              </div>
+            </div>
             <div class="rec-cand-footer">
               <label class="email-toggle">
                 <input type="checkbox" data-email-toggle="${c.id}" data-cand-db="${c.isDb?'1':'0'}" ${(c.emailSent||c.email_sent)?'checked':''}>
@@ -395,7 +434,7 @@ function renderTalentPoolTab() {
         <div class="talent-pool-pos-header">
           <span class="talent-pool-pos-title">${escHtml(p.title)}</span>
           <span class="talent-pool-pos-count">${posCands.length} candidates</span>
-          <span class="talent-pool-pos-short">${posCands.filter(c=>c.status==='shortlisted').length} shortlisted</span>
+          <span class="talent-pool-pos-short">${posCands.filter(c=>c.status==='shortlisted'||c.status==='interview'||c.status==='hired').length} progressed</span>
         </div>
         <table class="talent-pool-table">
           <thead><tr><th>Name</th><th>Current Role</th><th>Location</th><th>Current Salary</th><th>Desired Salary</th><th>Status</th><th>CV</th><th></th></tr></thead>
@@ -407,11 +446,13 @@ function renderTalentPoolTab() {
                   <div class="rec-mini-avatar" style="width:28px;height:28px;font-size:9px">${c.initials||'?'}</div>
                   <span style="font-weight:500;font-size:12px">${escHtml(c.name)}</span>
                 </div></td>
-                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentRole||c.current_role||'')}</td>
-                <td style="font-size:11px;color:var(--text-3)">${escHtml(c.location||'')}</td>
-                <td style="font-size:11px;color:var(--text-2)">${escHtml(c.currentSalary||c.current_salary||'—')}</td>
-                <td style="font-size:11px;color:var(--green)">${escHtml(c.desiredSalary||c.desired_salary||'—')}</td>
-                <td><span class="cand-status-pill" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.label}</span></td>
+                <td><input class="pool-inline-input" data-inline-field="candidate_role" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.currentRole||c.current_role||'')}" placeholder="—"></td>
+                <td><input class="pool-inline-input" data-inline-field="location" data-cand-id="${c.id}" data-cand-db="${c.isDb?'1':'0'}" value="${escHtml(c.location||'')}" placeholder="—"></td>
+                <td>${salaryInputs('current_salary', c.id, c.isDb, c.currentSalary||c.current_salary||'')}</td>
+                <td>${salaryInputs('desired_salary', c.id, c.isDb, c.desiredSalary||c.desired_salary||'')}</td>
+                <td><select class="cand-status-select" data-cand-status="${c.id}" data-cand-db="${c.isDb?'1':'0'}" style="font-size:10px;padding:3px 6px;border-radius:8px;border:1px solid var(--border);background:${st.color}22;color:${st.color}">
+                  ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+                </select></td>
                 <td>${(c.driveUrl||c.drive_url)?`<a href="${c.driveUrl||c.drive_url}" target="_blank" class="rec-cv-link">View →</a>`:''}</td>
                 <td><button class="btn-danger-sm" data-delete-cand="${c.id}" data-cand-db="${c.isDb?'1':'0'}" style="font-size:10px;padding:2px 6px">🗑</button></td>
               </tr>`;
@@ -773,6 +814,44 @@ export function attachRecruitingEvents() {
       }
     });
   });
+  // ── Inline field edits (Current Role, Location, Salary) ─────────────
+  async function saveInlineField(candId, isDb, fieldName, value) {
+    if (!isDb) return;
+    const c = state.dbCandidates.find(x => x.id === candId);
+    if (!c) return;
+    c[fieldName] = value;
+    try { await updateDbCandidate(candId, { [fieldName]: value }); }
+    catch(err) { showToast('Save failed: ' + err.message, 'error'); }
+  }
+  // Merge currency + amount then save
+  function mergeSalary(amountInput) {
+    const candId = amountInput.dataset.candId;
+    const isDb = amountInput.dataset.candDb === '1';
+    const fieldName = amountInput.dataset.inlineField;
+    const currSel = amountInput.closest('.salary-inline-wrap')?.querySelector('.salary-currency-sel');
+    const currency = currSel ? currSel.value : '$';
+    const amount = amountInput.value.trim();
+    const combined = amount ? `${currency} ${amount}` : '';
+    saveInlineField(candId, isDb, fieldName, combined);
+  }
+  document.querySelectorAll('[data-inline-field]').forEach(input => {
+    if (input.tagName !== 'INPUT') return;
+    const isSalary = ['current_salary','desired_salary'].includes(input.dataset.inlineField);
+    if (isSalary) {
+      input.addEventListener('blur', () => mergeSalary(input));
+    } else {
+      input.addEventListener('blur', () => {
+        saveInlineField(input.dataset.candId, input.dataset.candDb === '1', input.dataset.inlineField, input.value.trim());
+      });
+    }
+  });
+  document.querySelectorAll('.salary-currency-sel').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const amountInput = sel.closest('.salary-inline-wrap')?.querySelector('[data-inline-field]');
+      if (amountInput) mergeSalary(amountInput);
+    });
+  });
+
   // Candidate notes
   document.querySelectorAll('[data-rec-notes]').forEach(ta => {
     ta.addEventListener('input', async () => {

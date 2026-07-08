@@ -88,7 +88,7 @@ const PAGES = [
   ]},
   { id: 'recruiting', label: 'Recruiting', icon: ICONS.recruiting, tabs: [
     { key: 'positions', view: 'recruiting', label: 'Positions', match: () => state.recTab === 'positions', set: () => { state.recTab = 'positions'; }, count: () => (state.dbPositions || []).length },
-    { key: 'candidates', view: 'recruiting', label: 'Candidates', match: () => state.recTab === 'candidates', set: () => { state.recTab = 'candidates'; }, count: () => candidates.length },
+    { key: 'candidates', view: 'recruiting', label: 'Candidates', match: () => state.recTab === 'candidates', set: () => { state.recTab = 'candidates'; }, count: () => (state.dbCandidates || []).length },
     { key: 'talent-pool', view: 'recruiting', label: 'Talent Pool', match: () => state.recTab === 'pool', set: () => { state.recTab = 'pool'; } },
     { key: 'job-apps', view: 'job-apps', label: 'Job Applications', count: () => state.jobApplications.length },
     { key: 'general-cvs', view: 'general-cvs', label: 'General CVs', count: () => state.generalCVs.length },
