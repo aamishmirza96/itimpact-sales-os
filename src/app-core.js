@@ -159,6 +159,7 @@ const state = {
   positionEditData: null,
   candidateModal: null,  // 'new' | 'edit'
   candidateEditData: null,
+  driveImportModal: null, // { positionId } or null
   dbStatus: null,
   jobBoardSelected: null,
   persisted: loadSaved(),

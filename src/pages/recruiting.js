@@ -218,7 +218,9 @@ function renderRecruiting() {
     </div>
     <div style="display:flex;gap:8px">
       ${state.recTab==='positions' ? `<button class="btn-primary" id="btn-add-position">+ Add Position</button>` : ''}
-      ${state.recTab==='candidates' ? `<button class="btn-primary" id="btn-add-candidate">+ Add Candidate</button>` : ''}
+      ${state.recTab==='candidates' ? `
+        <button class="btn-ghost" id="btn-drive-import" style="display:flex;align-items:center;gap:5px">📁 From Drive</button>
+        <button class="btn-primary" id="btn-add-candidate">+ Add Candidate</button>` : ''}
       ${state.recTab==='pool' ? `<button class="btn-primary" id="btn-add-candidate-pool">+ Add Candidate</button>` : ''}
     </div>
   </div>
@@ -229,7 +231,8 @@ function renderRecruiting() {
   ${state.recTab==='candidates' ? renderCandidatesTab() : ''}
   ${state.recTab==='pool' ? renderTalentPoolTab() : ''}
   ${state.positionModal ? renderPositionModal() : ''}
-  ${state.candidateModal ? renderCandidateModal() : ''}`;
+  ${state.candidateModal ? renderCandidateModal() : ''}
+  ${state.driveImportModal !== null ? renderDriveImportModal() : ''}`;
 }
 
 function renderPositionsTab() {
@@ -275,6 +278,7 @@ function renderPositionsTab() {
           </div>` : ''}
           <div class="rec-pos-footer">
             ${driveUrl ? `<a href="${driveUrl}" target="_blank" class="rec-drive-link">📁 Open in Google Drive →</a>` : ''}
+            <button class="rec-drive-add-btn btn-ghost" data-drive-import-pos="${p.id}" style="font-size:11px;padding:5px 12px">📁 Add CV from Drive</button>
             <button class="rec-view-cands-btn" data-viewcands="${p.id}">View ${posCands.length} Candidates →</button>
           </div>
           ${posCands.length ? `
@@ -416,6 +420,53 @@ function renderTalentPoolTab() {
         </table>
       </div>`;
     }).join('')}
+  </div>`;
+}
+
+// ── Drive Import Modal ────────────────────────────────────────────────
+function renderDriveImportModal() {
+  const pos = allPositions();
+  const preselected = state.driveImportModal?.positionId || '';
+  return `
+  <div class="modal-overlay" id="drive-import-overlay">
+    <div class="modal-box" style="max-width:460px" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">📁 Add Candidate from Google Drive</div>
+        <button class="modal-close" id="drive-import-close">✕</button>
+      </div>
+      <form id="drive-import-form" style="display:flex;flex-direction:column;gap:14px;padding:4px 0">
+        <div class="form-group">
+          <label class="form-label">Google Drive CV Link *</label>
+          <input class="form-input" id="drive-import-url" name="drive_url"
+            placeholder="https://drive.google.com/file/d/…/view" required autofocus
+            style="border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)">
+          <div style="font-size:10px;color:var(--text-3);margin-top:4px">Paste the shareable link from your Drive folder</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Candidate Name *</label>
+            <input class="form-input" name="name" placeholder="Jane Smith" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Position</label>
+            <select class="form-input" name="position_id">
+              <option value="">— No position —</option>
+              ${pos.map(p=>`<option value="${p.id}" ${preselected===p.id?'selected':''}>${escHtml(p.title)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            ${CANDIDATE_STATUSES.map(s=>`<option value="${s.id}" ${s.id==='new'?'selected':''}>${s.label}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+          <button type="button" class="btn-ghost" id="drive-import-cancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="drive-import-submit">Add Candidate</button>
+        </div>
+      </form>
+    </div>
   </div>`;
 }
 
@@ -743,6 +794,57 @@ export function attachRecruitingEvents() {
       state.candidatePanel = el.dataset.openCandidate;
       app.render();
     });
+  });
+
+  // ── Drive Import Modal ────────────────────────────────────────────
+  // Open from candidates tab header button
+  document.getElementById('btn-drive-import')?.addEventListener('click', () => {
+    state.driveImportModal = { positionId: state.recPosition || '' };
+    app.render();
+    setTimeout(() => document.getElementById('drive-import-url')?.focus(), 50);
+  });
+  // Open from position card footer button (pre-selects position)
+  document.querySelectorAll('[data-drive-import-pos]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      state.driveImportModal = { positionId: btn.dataset.driveImportPos };
+      app.render();
+      setTimeout(() => document.getElementById('drive-import-url')?.focus(), 50);
+    });
+  });
+  // Close
+  const closeDriveModal = () => { state.driveImportModal = null; app.render(); };
+  document.getElementById('drive-import-close')?.addEventListener('click', closeDriveModal);
+  document.getElementById('drive-import-cancel')?.addEventListener('click', closeDriveModal);
+  document.getElementById('drive-import-overlay')?.addEventListener('click', e => {
+    if (e.target.id === 'drive-import-overlay') closeDriveModal();
+  });
+  // Submit
+  document.getElementById('drive-import-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const name = (fd.get('name') || '').trim();
+    const drive_url = (fd.get('drive_url') || '').trim();
+    if (!name || !drive_url) { showToast('Name and Drive link are required', 'error'); return; }
+    const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const data = {
+      name, initials,
+      position_id: fd.get('position_id') || null,
+      status: fd.get('status') || 'new',
+      drive_url,
+    };
+    const btn = document.getElementById('drive-import-submit');
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+    try {
+      await createDbCandidate(data);
+      state.dbCandidates = (await fetchDbCandidates()).rows;
+      state.driveImportModal = null;
+      showToast(`${name} added ✓`, 'success');
+      app.render();
+    } catch(err) {
+      showToast('Error: ' + err.message, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Add Candidate'; }
+    }
   });
 }
 
